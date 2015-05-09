@@ -1,0 +1,26 @@
+# depslib dependency file v1.0
+1431176020 source:/home/simon/Desktop/Bachelorarbeit/dateisystem/src/disk.c
+	"../h/disk.h"
+
+1431175126 /home/simon/Desktop/Bachelorarbeit/dateisystem/h/disk.h
+	<stdio.h>
+	<stdlib.h>
+
+1431184721 source:/home/simon/Desktop/Bachelorarbeit/dateisystem/src/disk_interface.c
+	"../h/disk_interface.h"
+
+1431184732 /home/simon/Desktop/Bachelorarbeit/dateisystem/h/disk_interface.h
+	<stdio.h>
+	<time.h>
+	"disk.h"
+
+1431187176 source:/home/simon/Desktop/Bachelorarbeit/dateisystem/src/file_system.c
+	"../h/file_system.h"
+
+1431187914 /home/simon/Desktop/Bachelorarbeit/dateisystem/h/file_system.h
+	"disk_interface.h"
+
+1431188052 source:/home/simon/Desktop/Bachelorarbeit/dateisystem/test/main.c
+	<stdio.h>
+	<stdlib.h>
+

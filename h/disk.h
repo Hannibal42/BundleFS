@@ -13,10 +13,11 @@ enum DISK_STATUS{
 
 struct disk {
 	char number;
-	int size; //size of the device in byte
+	unsigned long size; //size of the device in byte
 	char* file_name;
 	FILE* file;
-	int block_size;
+	unsigned long sector_size;
+	unsigned long sector_count;
 	enum DISK_STATUS status;
 };
 
