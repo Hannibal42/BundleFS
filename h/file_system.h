@@ -2,21 +2,21 @@
 #define FILE_SYSTEM_H
 
 #include "disk_interface.h"
+#include <string.h>
 
 /* Standart start point for the fs */
 
-#define FS_START 0x0;
+#define FS_START 0;
 
 /* File system information */ 
 struct FILE_SYSTEM{
 	char id;
 	unsigned long alloc_table; // start of the allocation table
 	unsigned long alloc_table_size; //Number of sectors for the allocation table
-	char* inode_alloc_table; // start of the inode allocation table
+	unsigned long inode_alloc_table; // start of the inode allocation table
 	unsigned long inode_alloc_table_size;
-	char* inode_block; // Start of the inode block
+	unsigned long inode_block; // Start of the inode block
 	unsigned long inode_block_size;
-	//char* super_block; 
 	struct disk* disk; //Pointer to the disk the fs is belonging to
 };
 
@@ -54,14 +54,14 @@ enum FSRESULT fs_close(struct INODE* file);
 enum FSRESULT fs_delete(struct INODE* file);
 enum FSRESULT fs_read(struct INODE* file,char* buffer,unsigned long size);
 enum FSRESULT fs_write(struct INODE* file,char* buffer,unsigned long size);
-enum FSRESULT fs_flush(); //Writes all cached data to the disk
+//enum FSRESULT fs_flush(); //Writes all cached data to the disk
 
 
 unsigned long fs_tell(struct INODE* file);
 enum FSRESULT fs_seek(struct INODE* file,unsigned long point);
 
 enum FSRESULT fs_mkfs(struct disk* disk/*, uint au */);
-enum FSRESULT fs_mount(struct disk* disk,struct FILE_SYSTEM* file_system); // Mounts the filesystem
-unsigned long fs_getfree(struct FILE_SYSTEM* file_system);
+enum FSRESULT fs_mount(struct disk* disk,struct FILE_SYSTEM* fs); // Mounts the filesystem
+unsigned long fs_getfree(struct disk* disk, struct FILE_SYSTEM* fs);
 
 #endif /* FILE_SYSTEM_H */

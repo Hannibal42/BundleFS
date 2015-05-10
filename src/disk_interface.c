@@ -64,13 +64,9 @@ enum DRESULT disk_write(struct disk* disk, char* buff, unsigned long sector, uns
 	if(number_of_bytes > disk->size)
 		return RES_PARERR;
 
-	printf("Number of bytes:%i \n", number_of_bytes);
-	printf("Sector: %lu \n", sector);
-	printf("Sector size: %lu \n", disk->sector_size);
 	fseek(disk->file, sector * disk->sector_size ,SEEK_SET);
-	int size = fwrite(buff, sizeof(char), number_of_bytes, disk->file);
+	fwrite(buff, sizeof(char), number_of_bytes, disk->file);
 
-	printf("%i", size);
 	return RES_OK;
 }
 
@@ -99,7 +95,7 @@ enum DRESULT disk_ioctl(struct disk* disk, char cmd, unsigned long* buff)
 	}
 }
 
-
+/*
 int main()
 {
 	struct disk* disk;
@@ -125,4 +121,4 @@ int main()
 	disk_shutdown(disk);
 	free(disk);
 	return 0;
-}
+} */
