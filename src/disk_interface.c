@@ -12,18 +12,21 @@ enum DRESULT disk_initialize(struct disk* disk)
 	if(!disk)
 		return RES_PARERR;
 
-	disk->file = fopen(disk->file_name, "w+b");
-	short buffer[1024] = {0};
-	fseek(disk->file, 0, SEEK_SET);
-	fwrite((char*)buffer, sizeof(char), 1024, disk->file);//TODO: Change this after testing, the disk shouldnt be always be wiped
-	fclose(disk->file);
+	//disk->file = fopen(disk->file_name, "w+b");
+	//short buffer[1024] = {0};
+	//fseek(disk->file, 0, SEEK_SET);
+	//fwrite((char*)buffer, sizeof(char), 1024, disk->file);//TODO: Change this after testing, the disk shouldnt be always be wiped
+	//fclose(disk->file);
 
 	disk->file = fopen(disk->file_name, "r+b");
+	//fseek(disk->file, 0, SEEK_SET);
+	//fread((char*)buffer, sizeof(char), 1024, disk->file);
 
-	if(!disk->file){
+	if(disk->file){
 		disk->status = STA_READY;
 		return RES_OK;
-	}
+	} 
+	disk->status = STA_NOINIT; //TODO:Change this.
 	return RES_ERROR;
 }
 

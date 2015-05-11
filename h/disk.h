@@ -5,10 +5,10 @@
 #include <stdlib.h>
 
 enum DISK_STATUS{
-	STA_NOINIT, //Drive is not initialized
+	STA_NOINIT,//Drive is not initialized
 	STA_NODISK, //No Medium 
 	STA_PROTECT, //Medium is write protected
-	STA_READY
+	STA_READY,
 };
 
 struct disk {

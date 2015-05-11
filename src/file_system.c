@@ -110,10 +110,38 @@ enum FSRESULT fs_mount(struct disk* disk, struct FILE_SYSTEM* fs)
 
 	superblock_size = round_up_div(sizeof(struct FILE_SYSTEM),sector_size);
 	buffer = (char*) malloc(superblock_size * sector_size);
+	//int k;
+	//for(k = 0; k < )
 
 	disk_read(disk, buffer, 0, superblock_size);
 
-	memcpy(buffer, fs , sizeof(struct FILE_SYSTEM));
+	/*
+	int i;
+	for(i = 0; i < (superblock_size * sector_size); ++i){ //TODO:Remove
+		printf("%hd ", (short) buffer[i]);
+	}
+	printf("\n");
+	*/
+
+	//memcpy(buffer, fs , sizeof(struct FILE_SYSTEM));
+	struct FILE_SYSTEM* tempFS = (struct FILE_SYSTEM*) buffer; //This is ugly but memcpy makes fuuuu
+	fs->alloc_table = tempFS->alloc_table;
+	fs->alloc_table_size= tempFS->alloc_table_size;
+	fs->inode_alloc_table= tempFS->inode_alloc_table;
+	fs->inode_alloc_table_size= tempFS->inode_alloc_table_size;
+	fs->inode_block= tempFS->inode_block;
+	fs->inode_block_size= tempFS->inode_block_size;
+	
+	/*
+	char* buffer2;
+	buffer2 = (char*) fs;
+	for(i = 0; i < sizeof(struct FILE_SYSTEM); ++i){ //TODO:Remove
+		printf("%hd ", (short) buffer[i]);
+	}
+	printf("\n");
+
+	*/
+
 	free(buffer);
 
 	return FS_OK;
@@ -181,21 +209,55 @@ void print_fs(struct FILE_SYSTEM* fs)
 	printf("inode_block_size:%lu \n", fs->inode_block_size);
 }
 
+void print_disk(struct disk* disk)
+{
+	printf("Number:%c \n", disk->number);
+	printf("size:%lu \n", disk->size);
+	printf("sector_size:%lu \n", disk->sector_size);
+	printf("sector_count:%lu \n", disk->sector_count);
+	switch(disk->status){
+		case STA_NOINIT:
+			printf("STA_NOINIT");
+			break;
+		case STA_NODISK:
+			printf("STA_NODISK");
+			break;
+		case STA_PROTECT:
+			printf("STA_PROTECT");
+			break;
+		case STA_READY:
+			printf("STA_READY");
+			break;
+		//case STA_ERROR_NO_FILE: TODO: Fix this
+		//	printf("STA_ERROR_NO_FILE");
+		//	break;
+		default:
+			printf("ERROR");
+	}
+	printf("\n");
+}
+
 int main()
 { 
 	struct disk* disk;
+	struct disk* disk2;
 	disk = make_disk("test.disk");
 	disk_initialize(disk);
+	print_disk(disk);
 
-	fs_mkfs(disk);
+	//fs_mkfs(disk);
+	disk_shutdown(disk);
+	disk2 = make_disk("test.disk");
+	disk_initialize(disk2);
 	struct FILE_SYSTEM* fs;
 	fs = malloc(sizeof(struct FILE_SYSTEM));
 	fs->disk = disk; 
-	fs_mount(disk,fs);
+	fs_mount(disk2,fs);
 	print_fs(fs);
-	printf("%lu \n", fs_getfree(disk,fs));
-	disk_shutdown(disk);
+	printf("%lu \n", fs_getfree(disk2,fs));
+	disk_shutdown(disk2);
 
+	free(disk2);
 	free(disk);
 	free(fs);
 	return 0; 
