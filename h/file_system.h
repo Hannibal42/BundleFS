@@ -27,7 +27,7 @@ struct INODE{
 	unsigned int size;
 	unsigned int creation_date;  
 	unsigned int last_modified;
-	char* pointer; //Read&Write Pointer into the file,
+	unsigned int offset; //Offset into the file beginning from the start
 	char* location;  // Pointer to the start sector of the file
 	short custody;
 	unsigned int time_to_live;
@@ -41,6 +41,13 @@ enum fmode{
 	FCREATE
 };
 
+/* Modes for fs_seek */
+enum SEEK_MODE{
+	CUR,
+	SET,
+	END
+};
+
 /* Results of the file functions */
 enum FSRESULT{
 	FS_OK,
@@ -50,6 +57,7 @@ enum FSRESULT{
 
 
 enum FSRESULT fs_open(unsigned long number,struct INODE* file,enum fmode mode);
+enum FSRESULT fs_create(struct FILE_SYSTEM* fs, unsigned long size);
 enum FSRESULT fs_close(struct INODE* file);
 enum FSRESULT fs_delete(struct INODE* file);
 enum FSRESULT fs_read(struct INODE* file,char* buffer,unsigned long size);
@@ -58,7 +66,7 @@ enum FSRESULT fs_write(struct INODE* file,char* buffer,unsigned long size);
 
 
 unsigned long fs_tell(struct INODE* file);
-enum FSRESULT fs_seek(struct INODE* file,unsigned long point);
+enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod);
 
 enum FSRESULT fs_mkfs(struct disk* disk/*, uint au */);
 enum FSRESULT fs_mount(struct disk* disk,struct FILE_SYSTEM* fs); // Mounts the filesystem

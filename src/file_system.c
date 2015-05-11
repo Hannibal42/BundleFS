@@ -2,6 +2,7 @@
 
 
 unsigned long round_up_div(unsigned long dividend, unsigned long divisor);// TODO: Maybe inline
+enum FSRESULT fs_load_actb(struct FILE_SYSTEM* fs, char* buffer);
 
 enum FSRESULT fs_mkfs(struct disk* disk)
 	//uint au //size of allocation unit TODO: Do i want to implement this?)
@@ -191,6 +192,91 @@ unsigned long fs_getfree(struct disk* disk, struct FILE_SYSTEM* fs)
 	return ret;
 }
 
+enum FSRESULT fs_create(struct FILE_SYSTEM* fs, unsigned long size)
+{
+	printf("1");unsigned long sector_size;
+
+	if(disk_ioctl(fs->disk, GET_SECTOR_SIZE, &sector_size) != RES_OK){
+		return FS_ERROR;
+	}
+    printf("1");
+	char* alloc_table = malloc(fs->alloc_table_size * sector_size);
+	disk_read(fs->disk, alloc_table, fs->alloc_table, fs->alloc_table_size);
+
+	size = round_up_div(size, sector_size);
+	char* mask;
+	int i,k,r, mask_size, padding ;
+	mask_size = round_up_div(size,8);
+	mask = malloc(mask_size);
+	padding = size % 8;   
+	
+	for(i = 0; i < mask_size; ++i){
+		mask[i] = 0xFF; 
+		printf("1");
+	}
+	printf("1");
+	mask[mask_size - 1] = mask[mask_size - 1] << padding;
+
+	//Finds a sequence of bits that are empty in the allocation table
+	k = 0;
+	while(k < fs->alloc_table_size){
+		for(r = 0; r < mask_size; ++r){
+			if(alloc_table[k+r] ^ mask[r] != 0xFF)
+				break;
+		}
+		if(r == mask_size){
+			break;
+		}
+		k += r;
+	}
+
+	printf("2");
+	//Writes the bits into the alloc_table
+	for(i = 0; i < mask_size; ++i){
+		alloc_table[i] = mask[i];
+	}
+
+	disk_write(fs->disk, alloc_table, fs->alloc_table, fs->alloc_table_size);
+
+	free(mask);
+	free(alloc_table);
+	return FS_OK; 
+}
+
+enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod)
+{
+	unsigned int temp;
+	switch(mod){
+		case SEEK_CUR:
+			temp = file->offset + offset;
+			if(temp < file->size){//TODO: Kleiner oder groesser gleich ?
+				file->offset = temp;
+				return FS_OK;
+			}
+			return FS_PARAM_ERROR;
+		case SEEK_SET:
+			if(offset < file->size && offset >= 0){
+				file->offset=offset;
+				return FS_OK;
+			}
+			return FS_PARAM_ERROR;
+		case SEEK_END:
+			temp = file->offset + offset;
+			if(temp < file->size && file->offset <= offset){//TODO: Kleiner oder groesser gleich ?
+				file->offset = temp;
+				return FS_OK;
+			}
+			return FS_PARAM_ERROR;
+		default:
+			return FS_PARAM_ERROR;
+	}
+}
+
+unsigned long fs_tell(struct INODE* file)//TODO: Wie verhindere ich das irgendwer einfach in der Inode rumschreibt?
+{
+	return (long) file->offset;
+}
+
 
 
 
@@ -253,6 +339,8 @@ int main()
 	fs = malloc(sizeof(struct FILE_SYSTEM));
 	fs->disk = disk; 
 	fs_mount(disk2,fs);
+	fs->disk = disk2; 
+	fs_create(fs,30);
 	print_fs(fs);
 	printf("%lu \n", fs_getfree(disk2,fs));
 	disk_shutdown(disk2);
