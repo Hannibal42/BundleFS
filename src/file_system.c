@@ -1,4 +1,5 @@
 #include "../h/file_system.h"
+#include <stdint.h>
 
 
 unsigned long round_up_div(unsigned long dividend, unsigned long divisor);// TODO: Maybe inline
@@ -10,9 +11,8 @@ enum FSRESULT fs_mkfs(struct disk* disk)
 
 	//Check if the drive is ready
 	unsigned int i;
-	enum DRESULT dsksta; // used to store temporary output
 	struct FILE_SYSTEM* fs; // the file system to be created
-	unsigned long sector_count, sector_size, disk_size, max_file_count;
+	unsigned long sector_count, sector_size, max_file_count;
 	unsigned long size, dif;
 	unsigned long superblock_size; //Size of the superblock in sectors
 	char* temparray; //Used to make the fs superblock
@@ -161,7 +161,7 @@ int popcount(unsigned char x)
 unsigned long fs_getfree(struct disk* disk, struct FILE_SYSTEM* fs)
 {
 	unsigned long sector_size, ret, sector_count, byte_count;
-	unsigned char* buffer;
+	char* buffer;
 	unsigned int i;
 
 	if(disk_ioctl(disk, GET_SECTOR_SIZE, &sector_size) != RES_OK){
@@ -174,7 +174,7 @@ unsigned long fs_getfree(struct disk* disk, struct FILE_SYSTEM* fs)
 	}
 	byte_count = round_up_div(sector_count, 8);
 
-	buffer = (unsigned char*) malloc(fs->alloc_table_size * sector_size);
+	buffer = (char*) malloc(fs->alloc_table_size * sector_size);
 	disk_read(disk,buffer, fs->alloc_table, fs->alloc_table_size);
 
 	for(i = 0; i < byte_count; ++i){
@@ -192,53 +192,101 @@ unsigned long fs_getfree(struct disk* disk, struct FILE_SYSTEM* fs)
 	return ret;
 }
 
+int get_first_free_bit(uint8_t byte){
+	int i;
+	uint8_t temp= 0xFF;
+	for(i = 8; i >= 0; --i){
+		if((byte & (temp << i)) != 0x00)
+			return (i * (-1)) + 7;
+	}
+	return 8;
+}
+
+int get_last_free_bit(uint8_t byte){
+	int i;
+	uint8_t temp= 0xFF;
+	for(i = 8; i >= 0; --i){
+		if((byte & (temp >> i)) != 0x00)
+			return (i * (-1)) + 7;
+	}
+	return 8;
+}
+
 enum FSRESULT fs_create(struct FILE_SYSTEM* fs, unsigned long size)
 {
-	printf("1");unsigned long sector_size;
+	unsigned long sector_size;
 
 	if(disk_ioctl(fs->disk, GET_SECTOR_SIZE, &sector_size) != RES_OK){
 		return FS_ERROR;
 	}
-    printf("1");
 	char* alloc_table = malloc(fs->alloc_table_size * sector_size);
 	disk_read(fs->disk, alloc_table, fs->alloc_table, fs->alloc_table_size);
 
-	size = round_up_div(size, sector_size);
-	char* mask;
-	int i,k,r, mask_size, padding ;
-	mask_size = round_up_div(size,8);
-	mask = malloc(mask_size);
-	padding = size % 8;   
-	
-	for(i = 0; i < mask_size; ++i){
-		mask[i] = 0xFF; 
-		printf("1");
-	}
-	printf("1");
-	mask[mask_size - 1] = mask[mask_size - 1] << padding;
+	int i,k,r, bit_count, byte_count;
+	bit_count = round_up_div(size, sector_size);
+	byte_count = round_up_div(bit_count,8);
 
 	//Finds a sequence of bits that are empty in the allocation table
 	k = 0;
-	while(k < fs->alloc_table_size){
-		for(r = 0; r < mask_size; ++r){
-			if(alloc_table[k+r] ^ mask[r] != 0xFF)
-				break;
+	int temp_bit_count = 0;
+	while(k < (fs->alloc_table_size * sector_size)){
+		if((alloc_table[k] & 0xFF) == 0x00){
+			temp_bit_count += 8;
 		}
-		if(r == mask_size){
+		else{
+			//Anfang im byte
+			if(temp_bit_count == 0){
+				temp_bit_count += get_last_free_bit(alloc_table[k]);
+			}
+			else{
+				//Ende im byte
+				temp_bit_count += get_first_free_bit(alloc_table[k]);
+				if(temp_bit_count >= bit_count)
+					break;
+				temp_bit_count = 0;
+			}
+		}
+		//Ende normal
+		if(temp_bit_count >= bit_count)
 			break;
-		}
-		k += r;
+		k += 1;
 	}
 
-	printf("2");
+	k = (k - byte_count) + 1;
+
+	temp_bit_count = bit_count;
+	int startpadding = get_last_free_bit(alloc_table[k]);
+	//int endpadding = get_last_free_bit(alloc_table[k+byte_count-1]);
 	//Writes the bits into the alloc_table
-	for(i = 0; i < mask_size; ++i){
-		alloc_table[i] = mask[i];
-	}
+	for(i = k; i < (k + byte_count); ++i){
+		//Anfang
+		if(temp_bit_count == bit_count){
+			if((temp_bit_count + startpadding) <= 8){
+				
+			}
+			if(temp_bit_count > startpadding){
+				alloc_table[i] = 0xFF << (8 - startpadding);
+				temp_bit_count -= startpadding;
+			} else{
+				alloc_table[i] = 0xFF << (8 - temp_bit_count);
+				break;
+			}
+		} else {
+			//Ende 
+			if(i == (byte_count - 1)){
+				alloc_table[i] = 0xFF << (8 - temp_bit_count);
+				break;
+			} 
+			//Mitte
+			else{
+				alloc_table[i] = 0xFF;
+				temp_bit_count -= 8;
+			}
+		}
+	} 
 
 	disk_write(fs->disk, alloc_table, fs->alloc_table, fs->alloc_table_size);
 
-	free(mask);
 	free(alloc_table);
 	return FS_OK; 
 }
@@ -303,22 +351,22 @@ void print_disk(struct disk* disk)
 	printf("sector_count:%lu \n", disk->sector_count);
 	switch(disk->status){
 		case STA_NOINIT:
-			printf("STA_NOINIT");
+			printf("Status: STA_NOINIT");
 			break;
 		case STA_NODISK:
-			printf("STA_NODISK");
+			printf("Status: STA_NODISK");
 			break;
 		case STA_PROTECT:
-			printf("STA_PROTECT");
+			printf("Status: STA_PROTECT");
 			break;
 		case STA_READY:
-			printf("STA_READY");
+			printf("Status: STA_READY");
 			break;
-		//case STA_ERROR_NO_FILE: TODO: Fix this
-		//	printf("STA_ERROR_NO_FILE");
-		//	break;
+		case STA_ERROR_NO_FILE:
+			printf("Status: STA_ERROR_NO_FILE");
+			break;
 		default:
-			printf("ERROR");
+			printf("Status: ERROR");
 	}
 	printf("\n");
 }
@@ -331,7 +379,7 @@ int main()
 	disk_initialize(disk);
 	print_disk(disk);
 
-	//fs_mkfs(disk);
+	fs_mkfs(disk);
 	disk_shutdown(disk);
 	disk2 = make_disk("test.disk");
 	disk_initialize(disk2);
@@ -340,7 +388,32 @@ int main()
 	fs->disk = disk; 
 	fs_mount(disk2,fs);
 	fs->disk = disk2; 
+
 	fs_create(fs,30);
+	//fs_create(fs,30);
+
+	/*
+	printf("Number: %d \n", get_first_free_bit(0xFF));
+	printf("Number: %d \n", get_first_free_bit(0x7F));
+	printf("Number: %d \n", get_first_free_bit(0x3F));
+	printf("Number: %d \n", get_first_free_bit(0x1F));
+	printf("Number: %d \n", get_first_free_bit(0x0F));
+	printf("Number: %d \n", get_first_free_bit(0x07));
+	printf("Number: %d \n", get_first_free_bit(0x03));
+	printf("Number: %d \n", get_first_free_bit(0x01));
+	printf("Number: %d \n", get_first_free_bit(0x00));
+
+	printf("Number: %d \n", get_last_free_bit(0xFF));
+	printf("Number: %d \n", get_last_free_bit(0xFE));
+	printf("Number: %d \n", get_last_free_bit(0xFC));
+	printf("Number: %d \n", get_last_free_bit(0xF8));
+	printf("Number: %d \n", get_last_free_bit(0xF0));
+	printf("Number: %d \n", get_last_free_bit(0xE0));
+	printf("Number: %d \n", get_last_free_bit(0xC0));
+	printf("Number: %d \n", get_last_free_bit(0x80));
+	printf("Number: %d \n", get_last_free_bit(0x00));
+	*/
+	
 	print_fs(fs);
 	printf("%lu \n", fs_getfree(disk2,fs));
 	disk_shutdown(disk2);
