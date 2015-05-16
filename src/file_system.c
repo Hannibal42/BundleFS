@@ -1,9 +1,10 @@
 #include "../h/file_system.h"
 #include <stdint.h>
+#include <time.h>
 
 
 unsigned long round_up_div(unsigned long dividend, unsigned long divisor);// TODO: Maybe inline
-enum FSRESULT fs_load_actb(struct FILE_SYSTEM* fs, char* buffer);
+int popcount(unsigned char x); 
 
 enum FSRESULT fs_mkfs(struct disk* disk)
 	//uint au //size of allocation unit TODO: Do i want to implement this?)
@@ -212,9 +213,11 @@ int get_last_free_bit(uint8_t byte){
 	return 8;
 }
 
-enum FSRESULT fs_create(struct FILE_SYSTEM* fs, unsigned long size)
+enum FSRESULT fs_create(struct FILE_SYSTEM* fs,struct INODE* inode,
+ unsigned long size, unsigned int time_to_live, short custody)
 {
 	unsigned long sector_size;
+	unsigned int allocation_offset;
 
 	if(disk_ioctl(fs->disk, GET_SECTOR_SIZE, &sector_size) != RES_OK){
 		return FS_ERROR;
@@ -222,9 +225,41 @@ enum FSRESULT fs_create(struct FILE_SYSTEM* fs, unsigned long size)
 	char* alloc_table = malloc(fs->alloc_table_size * sector_size);
 	disk_read(fs->disk, alloc_table, fs->alloc_table, fs->alloc_table_size);
 
-	int i,k,r, bit_count, byte_count;
+	int i,k, bit_count, byte_count;
+
 	bit_count = round_up_div(size, sector_size);
 	byte_count = round_up_div(bit_count,8);
+
+	uint8_t* inode_alloc_table = malloc(fs->inode_alloc_table_size * sector_size);
+	disk_read(fs->disk, (char*)inode_alloc_table, fs->inode_alloc_table, fs->inode_alloc_table_size);
+
+	int bytes_inode_alloc_table = (fs->inode_alloc_table_size * sector_size); //TODO: Naming
+	uint8_t temp3 = 0; 
+
+	unsigned int inode_offset = 0;
+	for(i = 0; i < bytes_inode_alloc_table; ++i){
+		if(inode_alloc_table[i] != 0xFF)
+			break;
+	}
+
+	//No free inodes
+	if((i >= bytes_inode_alloc_table) && (inode_alloc_table[i-1] == 0xFF)){
+		printf("Error \n");
+		return FS_ERROR;
+	}
+
+	for(k = 0; k < 8; ++k){
+		temp3 = 0x80 >> k;
+		if((inode_alloc_table[i] & temp3) == 0x00){
+			inode_alloc_table[i] = inode_alloc_table[i] | temp3;
+			inode_offset = (8 * i) + k;
+			break;
+		}
+	}
+	disk_write(fs->disk, (char*) inode_alloc_table, fs->inode_alloc_table, fs->inode_alloc_table_size);
+	free(inode_alloc_table);
+	
+	printf("inode offset: %d \n",inode_offset); //TODO:Remove
 
 	//Finds a sequence of bits that are empty in the allocation table
 	k = 0;
@@ -252,30 +287,39 @@ enum FSRESULT fs_create(struct FILE_SYSTEM* fs, unsigned long size)
 		k += 1;
 	}
 
+	if(temp_bit_count < bit_count){
+		free(alloc_table);
+		//TODO: Das bit in der inode table wieder freigeben
+		return FS_ERROR;
+	}
+
 	k = (k - byte_count) + 1;
+
 
 	temp_bit_count = bit_count;
 	int startpadding = get_last_free_bit(alloc_table[k]);
-	//int endpadding = get_last_free_bit(alloc_table[k+byte_count-1]);
+	allocation_offset = (8 * k) + (8 - startpadding);
+	printf("Allocation offset: %d \n", allocation_offset); //TODO: remove
+	uint8_t temp2;
 	//Writes the bits into the alloc_table
 	for(i = k; i < (k + byte_count); ++i){
 		//Anfang
 		if(temp_bit_count == bit_count){
-			if((temp_bit_count + startpadding) <= 8){
-				
-			}
 			if(temp_bit_count > startpadding){
-				alloc_table[i] = 0xFF << (8 - startpadding);
+				temp2 = 0xFF >> (8 - startpadding);
+				alloc_table[i] = alloc_table[i] | temp2;
 				temp_bit_count -= startpadding;
 			} else{
-				alloc_table[i] = 0xFF << (8 - temp_bit_count);
-				break;
+				temp2 = 0xFF << (8 - temp_bit_count);
+				temp2 = temp2 >> (8 - startpadding);
+				alloc_table[i] = alloc_table[i] | temp2;
 			}
-		} else {
+		} 
+		else {
 			//Ende 
 			if(i == (byte_count - 1)){
-				alloc_table[i] = 0xFF << (8 - temp_bit_count);
-				break;
+				temp2 = 0xFF << (8 - temp_bit_count);
+				alloc_table[i] = alloc_table[i] | temp2;
 			} 
 			//Mitte
 			else{
@@ -286,8 +330,19 @@ enum FSRESULT fs_create(struct FILE_SYSTEM* fs, unsigned long size)
 	} 
 
 	disk_write(fs->disk, alloc_table, fs->alloc_table, fs->alloc_table_size);
-
 	free(alloc_table);
+
+	inode->size = size;
+	inode->creation_date = (unsigned int) time(NULL); //TODO: Get Time;
+	inode->last_modified = (unsigned int) time(NULL);
+	inode->offset = 0;
+	inode->location = allocation_offset;
+	inode->custody = 0;
+	inode->time_to_live = time_to_live;
+
+	//Write inode to disk...
+
+
 	return FS_OK; 
 }
 
@@ -376,6 +431,7 @@ int main()
 	struct disk* disk;
 	struct disk* disk2;
 	disk = make_disk("test.disk");
+	//disk_create(disk); //creates the file for the disk;
 	disk_initialize(disk);
 	print_disk(disk);
 
@@ -389,8 +445,15 @@ int main()
 	fs_mount(disk2,fs);
 	fs->disk = disk2; 
 
-	fs_create(fs,30);
-	//fs_create(fs,30);
+	struct INODE* i1;
+	i1 = (struct INODE*) malloc(sizeof(struct INODE));
+
+	fs_create(fs,i1,30,1000,1);
+	fs_create(fs,i1,30,1000,1);
+	fs_create(fs,i1,30,1000,1);
+	fs_create(fs,i1,30,1000,1);
+
+	free(i1);
 
 	/*
 	printf("Number: %d \n", get_first_free_bit(0xFF));

@@ -22,13 +22,12 @@ struct FILE_SYSTEM{
 
 /* File information */
 struct INODE{
-	struct FILE_SYSTEM* fs; //The file system the file belongs to
-	unsigned long number; //unique id in the file system
+	unsigned long id; //unique id in the file system
 	unsigned int size;
 	unsigned int creation_date;  
 	unsigned int last_modified;
 	unsigned int offset; //Offset into the file beginning from the start
-	char* location;  // Pointer to the start sector of the file
+	unsigned int location;  // Pointer to the start sector of the file
 	short custody;
 	unsigned int time_to_live;
 };
@@ -57,7 +56,8 @@ enum FSRESULT{
 
 
 enum FSRESULT fs_open(unsigned long number,struct INODE* file,enum fmode mode);
-enum FSRESULT fs_create(struct FILE_SYSTEM* fs, unsigned long size);
+enum FSRESULT fs_create(struct FILE_SYSTEM* fs,struct INODE* inode,
+ unsigned long size, unsigned int time_to_live, short custody);
 enum FSRESULT fs_close(struct INODE* file);
 enum FSRESULT fs_delete(struct INODE* file);
 enum FSRESULT fs_read(struct INODE* file,char* buffer,unsigned long size);
