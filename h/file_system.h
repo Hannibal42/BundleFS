@@ -1,8 +1,11 @@
 #ifndef FILE_SYSTEM_H
 #define FILE_SYSTEM_H
 
-#include "disk_interface.h"
+#include <stdint.h>
+#include <time.h>
 #include <string.h>
+#include "disk_interface.h"
+
 
 /* Standart start point for the fs */
 
