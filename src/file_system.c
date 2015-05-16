@@ -83,6 +83,7 @@ enum FSRESULT fs_mkfs(struct disk* disk)
     //Make Inode Block
     fs->inode_block_size = round_up_div(max_file_count * sizeof(struct INODE), sector_size);
     fs->inode_block = fs->inode_alloc_table + fs->inode_alloc_table_size;
+    fs->sector_size = sector_size;
     size = sector_size * fs->inode_block_size;
     temparray = malloc(sizeof(struct INODE) * size);
     for(i = 0; i < size; ++i){
@@ -133,6 +134,7 @@ enum FSRESULT fs_mount(struct disk* disk, struct FILE_SYSTEM* fs)
 	fs->inode_alloc_table_size= tempFS->inode_alloc_table_size;
 	fs->inode_block= tempFS->inode_block;
 	fs->inode_block_size= tempFS->inode_block_size;
+	fs->sector_size = tempFS->sector_size;
 	
 	/*
 	char* buffer2;
@@ -212,6 +214,26 @@ int get_last_free_bit(uint8_t byte){
 	}
 	return 8;
 }
+/*
+enum FSRESULT write_data(struct FILE_SYSTEM* fs, char* buffer, unsigned int size, unsigned int offset)
+{
+	unsigned int sector_count = round_up_div(offset + size, fs->sector_size);
+	unsigned int i; 
+	char* read_buffer; //Read buffer for the first an last block;
+	read_buffer = (char*) malloc(fs->sector_size);	
+
+	disk_read(fs->disk, read_buffer, 
+	//Anfang
+	if(sector_count > 1){
+
+	}else{
+		for(i = 0; i < size; ++i){
+
+		}
+	}
+
+
+} */
 
 enum FSRESULT fs_create(struct FILE_SYSTEM* fs,struct INODE* inode,
  unsigned long size, unsigned int time_to_live, short custody)
@@ -340,8 +362,29 @@ enum FSRESULT fs_create(struct FILE_SYSTEM* fs,struct INODE* inode,
 	inode->custody = 0;
 	inode->time_to_live = time_to_live;
 
-	//Write inode to disk...
+	int sector_number = 0;
+	int offset_into_sector = 0;
+	char* inode_buf = (char *) inode;
+	sector_number = (inode_offset * sizeof(struct INODE)) / sector_size;
+	offset_into_sector = (inode_offset * sizeof(struct INODE)) % sector_size;
 
+	//Inode is split into two sectors. TODO: Make general function for writing into two sectors
+	if((offset_into_sector + sizeof(struct INODE)) > sector_size){
+		printf("Needs to be split");
+		unsigned int sectors_needed =  
+
+		return FS_ERROR;
+	} else{
+		char* buffer3 = malloc(sector_size);
+		disk_read(fs->disk, buffer3, sector_number, sector_size);
+
+		for(i = 0; i < sizeof(struct INODE); ++i){
+			buffer3[offset_into_sector + i] = inode_buf[i];
+		}
+
+		disk_write(fs->disk, buffer3, sector_number, sector_size);
+		free(buffer3);
+	}
 
 	return FS_OK; 
 }

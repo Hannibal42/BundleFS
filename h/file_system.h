@@ -17,6 +17,7 @@ struct FILE_SYSTEM{
 	unsigned long inode_alloc_table_size;
 	unsigned long inode_block; // Start of the inode block
 	unsigned long inode_block_size;
+	unsigned int sector_size;
 	struct disk* disk; //Pointer to the disk the fs is belonging to
 };
 
