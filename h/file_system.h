@@ -32,16 +32,9 @@ struct INODE{
 	unsigned int last_modified;
 	unsigned int offset; //Offset into the file beginning from the start
 	unsigned int location;  // Pointer to the start sector of the file
+	unsigned int inode_offset;
 	short custody;
 	unsigned int time_to_live;
-};
-
-
-/* Modes for opening a file */ 
-enum fmode{
-	FREAD,
-	FWRITE,
-	FCREATE
 };
 
 /* Modes for fs_seek */
@@ -59,18 +52,20 @@ enum FSRESULT{
 };
 
 
-enum FSRESULT fs_open(unsigned long number,struct INODE* file,enum fmode mode);
+enum FSRESULT fs_open(struct FILE_SYSTEM* fs, unsigned long number,
+	struct INODE* file);
 enum FSRESULT fs_create(struct FILE_SYSTEM* fs,struct INODE* inode,
  unsigned long size, unsigned int time_to_live, short custody);
-enum FSRESULT fs_close(struct INODE* file);
+enum FSRESULT fs_close(struct FILE_SYSTEM* fs, struct INODE* file);
 enum FSRESULT fs_delete(struct INODE* file);
-enum FSRESULT fs_read(struct INODE* file,char* buffer,unsigned long size);
-enum FSRESULT fs_write(struct INODE* file,char* buffer,unsigned long size);
+enum FSRESULT fs_read(struct FILE_SYSTEM*, struct INODE* file,
+	char* buffer,unsigned long size);
+enum FSRESULT fs_write(struct FILE_SYSTEM*, struct INODE* file,
+	char* buffer,unsigned long size);
 //enum FSRESULT fs_flush(); //Writes all cached data to the disk
 
-
-unsigned long fs_tell(struct INODE* file);
-enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod);
+//unsigned long fs_tell(struct INODE* file);
+//enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod);
 
 enum FSRESULT fs_mkfs(struct disk* disk/*, uint au */);
 enum FSRESULT fs_mount(struct disk* disk,struct FILE_SYSTEM* fs); // Mounts the filesystem

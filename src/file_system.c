@@ -27,7 +27,7 @@ int get_last_free_bit(uint8_t byte){
 	return 8;
 }
 
-//stolen from the internet, counts the bits in a byte
+//stolen from the internet, counts the 1 bits in a byte
 int popcount(unsigned char x)
 {
 	return ((0x876543210 >>
@@ -126,10 +126,86 @@ enum FSRESULT fs_mkfs(struct disk* disk)
 	disk_write(disk, (char*) fs, 0, superblock_size); 
 	//TODO: Make a padding, so no random memory is writen to disk.
 	free(fs);
+	fs = NULL;
 	return FS_OK;
 
 }
 
+enum FSRESULT fs_open(struct FILE_SYSTEM* fs, unsigned long number,
+	struct INODE* file)
+{
+	unsigned int i; 
+	uint8_t* buffer;
+	struct INODE* temp; 
+	buffer = malloc(fs->sector_size * fs->inode_block_size);
+	disk_read(fs->disk, (char*) buffer, fs->inode_block, fs->inode_block_size);
+
+	for(i = 0; i < fs->inode_block_size; ++i){
+		temp = (struct INODE*) buffer;
+		//buffer += fs->sector_size;
+		if(temp->id == number)
+			break;
+	}
+	//Resets the pointer, so that free can be called
+	buffer -= fs->sector_size * i; 
+
+	if(i >= fs->inode_block_size)
+		return FS_ERROR;
+
+	file->id = temp->id;
+	file->size = temp->size;
+	file->creation_date = temp->creation_date;
+	file->last_modified = temp->last_modified;
+	file->offset = 0;
+	file->location = temp->location;
+	file->custody = temp->custody;
+	file->time_to_live = temp->time_to_live;
+
+	free(buffer);
+	buffer = NULL;
+	return FS_OK;
+}
+
+enum FSRESULT fs_read(struct FILE_SYSTEM* fs, struct INODE* file,
+	char* buffer,unsigned long size)
+{
+	unsigned long sector_count;
+	unsigned int offset;
+
+	if(file->size < size)
+		return FS_PARAM_ERROR;
+
+	offset = fs->inode_block + fs->inode_block_size;
+	sector_count = round_up_div(size, fs->sector_size);
+	//TODO: Breaks if the buffer has the wrong size
+	disk_read(fs->disk, buffer, file->location + offset, sector_count);
+	return FS_OK;
+}
+
+enum FSRESULT fs_write(struct FILE_SYSTEM* fs, struct INODE* file,
+	char* buffer,unsigned long size)
+{
+	unsigned long sector_count;
+	unsigned int offset;
+	char* temp_buffer;
+
+	if(file->size < size)
+		return FS_PARAM_ERROR;
+
+	offset = fs->inode_block + fs->inode_block_size;
+	sector_count = round_up_div(size, fs->sector_size);
+	file->last_modified = (unsigned int) time(NULL);
+
+	disk_write(fs->disk, buffer, offset + file->location, sector_count);
+	return FS_OK;
+}
+
+enum FSRESULT fs_close(struct FILE_SYSTEM* fs, struct INODE* file)
+{
+	disk_write(fs->disk, (char*) file, fs->inode_block + file->inode_offset,
+	 1);
+	return FS_OK;
+}
 
 enum FSRESULT fs_mount(struct disk* disk, struct FILE_SYSTEM* fs)
 {
@@ -157,6 +233,7 @@ enum FSRESULT fs_mount(struct disk* disk, struct FILE_SYSTEM* fs)
 	fs->sector_size = tempFS->sector_size;
 
 	free(buffer);
+	buffer=NULL;
 
 	return FS_OK;
 }
@@ -182,9 +259,7 @@ unsigned long fs_getfree(struct disk* disk, struct FILE_SYSTEM* fs)
 
 	ret = 0;
 	for(i = 0; i < byte_count; ++i){
-		if(buffer[i] != 0){
-			ret += popcount(buffer[i]);
-		}
+		ret += (8 - popcount(buffer[i]));
 	}
 	free(buffer);
 	return ret;
@@ -320,6 +395,7 @@ enum FSRESULT fs_create(struct FILE_SYSTEM* fs,struct INODE* inode,
 	inode->location = allocation_offset;
 	inode->custody = 0;
 	inode->time_to_live = time_to_live;
+	inode->inode_offset = inode_offset;
 
 	//Write to disk
 	inode_buf = (uint8_t *) inode;

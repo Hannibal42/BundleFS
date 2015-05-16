@@ -59,11 +59,29 @@ int main()
 
 	struct INODE* i1;
 	i1 = (struct INODE*) malloc(sizeof(struct INODE));
+	i1->id=0; 
 
 	fs_create(fs,i1,30,1000,1);
 	fs_create(fs,i1,30,1000,1);
 	fs_create(fs,i1,30,1000,1);
 	fs_create(fs,i1,30,1000,1);
+
+	free(i1);
+	i1 = NULL;
+
+	i1 = (struct INODE*) malloc(sizeof(struct INODE));
+	fs_open(fs, 0, i1);
+
+	printf("ID: %lu \n", i1->id);
+
+	char* buffer;
+	buffer = malloc(30);
+	buffer[0] = 0xFF;
+	buffer[1] = 0x00;
+	buffer[2] = 0xFF;
+	buffer[3] = 0x00;
+
+	fs_write(fs, i1, buffer, 30);
 
 	free(i1);
 
@@ -91,7 +109,8 @@ int main()
 	//printf("Inode size:%d \n", sizeof(struct INODE));
 
 	print_fs(fs);
-	printf("%lu \n", fs_getfree(disk2,fs));
+	printf("Free: %lu \n", fs_getfree(disk2,fs));
+
 	disk_shutdown(disk2);
 
 	free(disk2);
