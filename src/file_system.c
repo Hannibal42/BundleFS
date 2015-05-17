@@ -166,34 +166,109 @@ enum FSRESULT fs_open(struct FILE_SYSTEM* fs, unsigned long number,
 	return FS_OK;
 }
 
+enum FSRESULT fs_delete(struct FILE_SYSTEM* fs, struct INODE* file)
+{
+	//Free bits in alloc_table
+	unsigned int bit_count, byte_count, temp_bit_count, 
+	startpadding,i, k, temp_offset; 
+	uint8_t* alloc_table;
+	uint8_t* inode_alloc_table;
+	uint8_t temp_byte;
+	uint8_t* buffer;
+
+	alloc_table = malloc(fs->sector_size * fs->alloc_table_size);
+	disk_read(fs->disk, (char*) alloc_table, fs->alloc_table, 
+		fs->alloc_table_size);
+
+	bit_count = round_up_div(file->size,fs->sector_size);
+	byte_count = round_up_div(bit_count, 8); 
+
+	temp_bit_count = bit_count;
+	startpadding = 8 - (file->location % 8);
+	k = round_up_div(file->location, 8);
+	//Writes the bits into the alloc_table
+	for(i = k; i < (k + byte_count); ++i){
+		//Start
+		if(temp_bit_count == bit_count){
+			if(temp_bit_count > startpadding){
+				temp_byte = 0xFF >> (8 - startpadding);
+				alloc_table[i] = alloc_table[i] ^ temp_byte;
+				temp_bit_count -= startpadding;
+			} else{
+				temp_byte = 0xFF << (8 - temp_bit_count);
+				temp_byte = temp_byte >> (8 - startpadding);
+				alloc_table[i] = alloc_table[i] ^ temp_byte;
+			}
+		} 
+		else {
+			//End 
+			if(i == (byte_count - 1)){
+				temp_byte = 0xFF << (8 - temp_bit_count);
+				alloc_table[i] = alloc_table[i] ^ temp_byte;
+			} 
+			//Middle
+			else{
+				alloc_table[i] = 0xFF;
+				temp_bit_count -= 8;
+			}
+		}
+	} 
+
+	disk_write(fs->disk, (char*) alloc_table, fs->alloc_table, 
+		fs->alloc_table_size);
+	free(alloc_table);
+
+	//Free bit in inode_table
+	inode_alloc_table = malloc(fs->sector_size * fs->inode_alloc_table_size);
+	disk_read(fs->disk, (char*) inode_alloc_table, fs->inode_alloc_table, 
+		fs->inode_alloc_table_size);
+
+	temp_byte = 0x80 >> (file->inode_offset % 8);
+	temp_offset = file->inode_offset / 8; 
+	inode_alloc_table[temp_offset] = inode_alloc_table[temp_offset] ^ 
+	temp_byte;
+
+	disk_write(fs->disk, (char*) inode_alloc_table, fs->inode_alloc_table, 
+		fs->inode_alloc_table_size);
+
+	free(inode_alloc_table);
+
+	//Delete Inode
+	buffer = malloc(fs->sector_size);
+	for(i = 0; i < fs->sector_size; ++i){
+		buffer[i] = 0x00;
+	}
+
+	disk_write(fs->disk, (char*) buffer, fs->inode_block + file->inode_offset,
+	 1); 
+
+	free(buffer);
+	file->location = 0xFFFFFFFF;
+
+	return FS_ERROR;
+}
+
 enum FSRESULT fs_read(struct FILE_SYSTEM* fs, struct INODE* file,
-	char* buffer,unsigned long size)
+	char* buffer)
 {
 	unsigned long sector_count;
 	unsigned int offset;
 
-	if(file->size < size)
-		return FS_PARAM_ERROR;
-
 	offset = fs->inode_block + fs->inode_block_size;
-	sector_count = round_up_div(size, fs->sector_size);
+	sector_count = round_up_div(file->size, fs->sector_size);
 	//TODO: Breaks if the buffer has the wrong size
 	disk_read(fs->disk, buffer, file->location + offset, sector_count);
 	return FS_OK;
 }
 
 enum FSRESULT fs_write(struct FILE_SYSTEM* fs, struct INODE* file,
-	char* buffer,unsigned long size)
+	char* buffer)
 {
 	unsigned long sector_count;
 	unsigned int offset;
-	char* temp_buffer;
-
-	if(file->size < size)
-		return FS_PARAM_ERROR;
 
 	offset = fs->inode_block + fs->inode_block_size;
-	sector_count = round_up_div(size, fs->sector_size);
+	sector_count = round_up_div(file->size, fs->sector_size);
 	file->last_modified = (unsigned int) time(NULL);
 
 	disk_write(fs->disk, buffer, offset + file->location, sector_count);
@@ -262,7 +337,7 @@ unsigned long fs_getfree(struct disk* disk, struct FILE_SYSTEM* fs)
 		ret += (8 - popcount(buffer[i]));
 	}
 	free(buffer);
-	return ret;
+	return ret * fs->sector_size;
 }
 
 enum FSRESULT fs_create(struct FILE_SYSTEM* fs,struct INODE* inode,
@@ -409,7 +484,7 @@ enum FSRESULT fs_create(struct FILE_SYSTEM* fs,struct INODE* inode,
 
 	return FS_OK; 
 }
-
+/*
 enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod)
 {
 	unsigned int temp;
@@ -444,3 +519,4 @@ unsigned long fs_tell(struct INODE* file)
 {
 	return (long) file->offset;
 }
+*/

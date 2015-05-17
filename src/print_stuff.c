@@ -38,6 +38,20 @@ void print_disk(struct disk* disk)
 	printf("\n");
 }
 
+
+void print_inode(struct INODE* file)
+{
+	printf("ID: %lu \n", file->id);
+	printf("Size: %d \n", file->size);
+	printf("creation date: %d \n", file->creation_date);
+	printf("last modified: %d \n", file->last_modified);
+	printf("offset: %d \n", file->offset);
+	printf("location: %d \n", file->location);
+	printf("inode offset: %d \n", file->inode_offset);
+	printf("custody: %hu \n", file->custody);
+	printf("TTL: %d \n", file->time_to_live);
+}
+
 int main()
 { 
 	struct disk* disk;
@@ -57,33 +71,47 @@ int main()
 	fs_mount(disk2,fs);
 	fs->disk = disk2; 
 
-	struct INODE* i1;
-	i1 = (struct INODE*) malloc(sizeof(struct INODE));
-	i1->id=0; 
+	struct INODE* inode1;
+	struct INODE* inode2;
+	struct INODE* inode3;
+	struct INODE* inode4;
+	inode1 = (struct INODE*) malloc(sizeof(struct INODE));
+	inode2 = (struct INODE*) malloc(sizeof(struct INODE));
+	inode3 = (struct INODE*) malloc(sizeof(struct INODE));
+	inode4 = (struct INODE*) malloc(sizeof(struct INODE));
+	inode1->id=0; 
+	inode2->id=1;
+	inode3->id=2;
+	inode4->id=3;
 
-	fs_create(fs,i1,30,1000,1);
-	fs_create(fs,i1,30,1000,1);
-	fs_create(fs,i1,30,1000,1);
-	fs_create(fs,i1,30,1000,1);
+	fs_create(fs,inode1,30,1000,1);
+	fs_create(fs,inode2,30,1000,1);
+	fs_create(fs,inode3,30,1000,1);
+	fs_create(fs,inode4,30,1000,1);
 
-	free(i1);
-	i1 = NULL;
+	free(inode1);
 
-	i1 = (struct INODE*) malloc(sizeof(struct INODE));
-	fs_open(fs, 0, i1);
+	inode1 = NULL;
 
-	printf("ID: %lu \n", i1->id);
+	inode1 = (struct INODE*) malloc(sizeof(struct INODE));
+	fs_open(fs, 0, inode1);
 
 	char* buffer;
-	buffer = malloc(30);
+	buffer = malloc(fs->sector_size);
 	buffer[0] = 0xFF;
 	buffer[1] = 0x00;
 	buffer[2] = 0xFF;
 	buffer[3] = 0x00;
 
-	fs_write(fs, i1, buffer, 30);
+	fs_write(fs, inode1, buffer);
+	print_inode(inode1);
+	print_inode(inode2);
+	fs_delete(fs, inode1);
 
-	free(i1);
+	free(inode1);
+	free(inode2);
+	free(inode3);
+	free(inode4);
 
 	/*
 	printf("Number: %d \n", get_first_free_bit(0xFF));
