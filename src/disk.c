@@ -2,7 +2,7 @@
 
 struct disk *make_disk(char *filename)
 {
-	struct disk *disk = (*struct disk) malloc(sizeof(struct disk));
+	struct disk *disk = (struct disk *) malloc(sizeof(struct disk));
 
 	disk->size = 1024;
 	disk->sector_size = 64;

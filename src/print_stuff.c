@@ -2,6 +2,7 @@
 
 void print_fs(struct FILE_SYSTEM *fs)
 {
+	printf("-----------------------File System-----------------------\n");
 	printf("Alloc_table:%lu\n", fs->alloc_table);
 	printf("Alloc_table_size:%lu\n", fs->alloc_table_size);
 	printf("Inode_Alloc_table:%lu\n", fs->inode_alloc_table);
@@ -12,6 +13,7 @@ void print_fs(struct FILE_SYSTEM *fs)
 
 void print_disk(struct disk *disk)
 {
+	printf("-----------------------Disk-----------------------\n");
 	printf("Number:%c\n", disk->number);
 	printf("size:%lu\n", disk->size);
 	printf("sector_size:%lu\n", disk->sector_size);
@@ -41,6 +43,7 @@ void print_disk(struct disk *disk)
 
 void print_inode(struct INODE *file)
 {
+	printf("-----------------------Inode-----------------------\n");
 	printf("ID: %lu\n", file->id);
 	printf("Size: %d\n", file->size);
 	printf("creation date: %d\n", file->creation_date);
@@ -80,10 +83,10 @@ int main(void)
 	fs->disk = disk2;
 
 
-	inode1 = (*struct INODE) malloc(sizeof(struct INODE));
-	inode2 = (*struct INODE) malloc(sizeof(struct INODE));
-	inode3 = (*struct INODE) malloc(sizeof(struct INODE));
-	inode4 = (*struct INODE) malloc(sizeof(struct INODE));
+	inode1 = (struct INODE *) malloc(sizeof(struct INODE));
+	inode2 = (struct INODE *) malloc(sizeof(struct INODE));
+	inode3 = (struct INODE *) malloc(sizeof(struct INODE));
+	inode4 = (struct INODE *) malloc(sizeof(struct INODE));
 	inode1->id = 0;
 	inode2->id = 1;
 	inode3->id = 2;
@@ -98,7 +101,7 @@ int main(void)
 
 	inode1 = NULL;
 
-	inode1 = (*struct INODE) malloc(sizeof(struct INODE));
+	inode1 = (struct INODE *) malloc(sizeof(struct INODE));
 	fs_open(fs, 0, inode1);
 
 	buffer = malloc(fs->sector_size * 2);

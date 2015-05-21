@@ -16,7 +16,7 @@ enum DRESULT disk_create(struct disk *disk)
 
 	disk->file = fopen(disk->file_name, "w+b");
 	fseek(disk->file, 0, SEEK_SET);
-	fwrite((*char)buffer, sizeof(char), 1024, disk->file);/*TODO:*/
+	fwrite((char *)buffer, sizeof(char), 1024, disk->file);/*TODO:*/
 	fclose(disk->file);
 	return RES_OK;
 }
