@@ -7,16 +7,14 @@ enum DISK_STATUS disk_status(const struct disk *disk)
 }
 
 
-enum DRESULT disk_create(struct disk *disk)
+enum DRESULT disk_create(struct disk *disk, uint size)
 {
-	short buffer[1024] = {0};
 
 	if (!disk)
 		return RES_PARERR;
 
 	disk->file = fopen(disk->file_name, "w+b");
 	fseek(disk->file, 0, SEEK_SET);
-	fwrite((char *)buffer, sizeof(char), 1024, disk->file);/*TODO:*/
 	fclose(disk->file);
 	return RES_OK;
 }
@@ -32,7 +30,7 @@ enum DRESULT disk_initialize(struct disk *disk)
 		disk->status = STA_READY;
 		return RES_OK;
 	}
-	disk->status = STA_NOINIT; /*TODO:Change this. */
+	disk->status = STA_NOINIT;/*TODO:Change this. */
 	return RES_ERROR;
 }
 

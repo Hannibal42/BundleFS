@@ -55,6 +55,7 @@ void print_inode(struct INODE *file)
 	printf("TTL: %d\n", file->time_to_live);
 }
 
+/*
 int main(void)
 {
 	int i;
@@ -67,14 +68,14 @@ int main(void)
 	struct INODE *inode4;
 	struct FILE_SYSTEM *fs;
 
-	disk = make_disk("test.disk");
-	/*disk_create(disk); //creates the file for the disk*/;
+	disk = make_disk("test.disk", 1024, 64);
+	disk_create(disk, 1024); //creates the file for the disk
 	disk_initialize(disk);
 	print_disk(disk);
 
 	fs_mkfs(disk);
 	disk_shutdown(disk);
-	disk2 = make_disk("test.disk");
+	disk2 = make_disk("test.disk", 1024, 64);
 	disk_initialize(disk2);
 
 	fs = malloc(sizeof(struct FILE_SYSTEM));
@@ -154,7 +155,7 @@ int main(void)
 	printf("Number: %d\n", get_last_free_bit(0x00));*/
 
 /*printf("Inode size:%d\n", sizeof(struct INODE));*/
-
+/*
 	print_fs(fs);
 	printf("Free: %lu\n", fs_getfree(disk2, fs));
 
@@ -164,4 +165,4 @@ int main(void)
 	free(disk);
 	free(fs);
 	return 0;
-}
+}*/

@@ -22,6 +22,6 @@ struct disk {
 	enum DISK_STATUS status;
 };
 
-struct disk *make_disk(char *filename);
+struct disk *make_disk(char *filename, uint size, uint sector_size);
 
 #endif /* DISK_H */

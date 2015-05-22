@@ -24,7 +24,9 @@ enum DRESULT {
 	RES_PARERR,/*Invalid Parameter*/
 	RES_NOTRDY/*Not ready*/
 };
-enum DRESULT disk_create(struct disk *disk);/*TODO: shouldnt be here...*/
+
+enum DRESULT disk_create(struct disk *disk,
+uint size);/*TODO: shouldnt be here...*/
 enum DISK_STATUS disk_status(const struct disk *disk);
 enum DRESULT disk_initialize(struct disk *disk);
 enum DRESULT disk_shutdown(struct disk *disk);
