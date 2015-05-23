@@ -1,9 +1,10 @@
 #ifndef FILE_SYSTEM_TEST_H
 #define FILE_SYSTEM_TEST_H
 
-#include "../h/disk_interface.h"
-#include "../h/file_system.h"
-#include "../h/disk.h"
-#include "../h/print_stuff.h"
+#include <stdbool.h>
+#include "disk_interface.h"
+#include "disk.h"
+#include "print_stuff.h"
+#include "file_system.h"/*Needed for the local functions*/
 
 #endif /* FILE_SYSTEM_TEST_H */

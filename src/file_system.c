@@ -1,6 +1,9 @@
 #include "../h/file_system.h"
 
 
+/*Writes the given bit into the allocation table*/
+void write_inode_alloc_table(uint index, uint8_t *table, bool value);
+
 inline unsigned long round_up_div(unsigned long dividend,
 	unsigned long divisor)
 {
@@ -132,7 +135,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 
 }
 
-enum FSRESULT fs_open(struct FILE_SYSTEM *fs, unsigned long number,
+enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	struct INODE *file)
 {
 	unsigned int i;
@@ -338,13 +341,13 @@ unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs)
 	return ret * fs->sector_size;
 }
 
-enum FSRESULT fs_create(struct FILE_SYSTEM *fs, struct INODE *inode,
-unsigned long size, unsigned int time_to_live, short custody)
+enum FSRESULT fs_create(struct FILE_SYSTEM *fs, struct INODE *file,
+unsigned long size, uint time_to_live, bool custody)
 {
 	unsigned long sector_size;
-	unsigned int allocation_offset, inode_offset, temp_bit_count,
+	uint allocation_offset, inode_offset, temp_bit_count,
 	startpadding;
-	unsigned int i, k, bit_count, byte_count, bytes_inode_alloc_table;
+	uint i, k, bit_count, byte_count, bytes_inode_alloc_table;
 	uint8_t temp_byte;
 	uint8_t *inode_buf;
 	uint8_t *inode_alloc_table;
@@ -375,7 +378,8 @@ unsigned long size, unsigned int time_to_live, short custody)
 	}
 
 	/*No free inodes*/
-	if ((i >= bytes_inode_alloc_table) && (inode_alloc_table[i-1] == 0xFF))
+	if ((i >= bytes_inode_alloc_table) &&
+		(inode_alloc_table[i-1] == 0xFF))
 		return FS_ERROR;
 
 	temp_byte = 0;
@@ -389,7 +393,7 @@ unsigned long size, unsigned int time_to_live, short custody)
 	}
 	disk_write(fs->disk, (char *) inode_alloc_table, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
-	free(inode_alloc_table);
+
 
 	/*Finds a sequence of bits that are empty in the allocation table*/
 	k = 0;
@@ -419,9 +423,15 @@ unsigned long size, unsigned int time_to_live, short custody)
 
 	if (temp_bit_count < bit_count) {
 		free(alloc_table);
-		/*TODO: Das bit in der inode table wieder freigeben*/
+
+		write_alloc_table(inode_offset, inode_alloc_table, 0);
+		disk_write(fs->disk, (char *) inode_alloc_table,
+		fs->inode_alloc_table, fs->inode_alloc_table_size);
+
+		free(inode_alloc_table);
 		return FS_ERROR;
 	}
+	free(inode_alloc_table);
 
 	k = (k - byte_count) + 1;
 
@@ -457,17 +467,17 @@ unsigned long size, unsigned int time_to_live, short custody)
 		fs->alloc_table_size);
 	free(alloc_table);
 
-	inode->size = size;
-	inode->creation_date = (unsigned int) time(NULL);
-	inode->last_modified = (unsigned int) time(NULL);
-	inode->offset = 0;
-	inode->location = allocation_offset;
-	inode->custody = 0;
-	inode->time_to_live = time_to_live;
-	inode->inode_offset = inode_offset;
+	file->size = size;
+	file->creation_date = (uint) time(NULL);
+	file->last_modified = (uint) time(NULL);
+	file->offset = 0;
+	file->location = allocation_offset;
+	file->custody = 0;
+	file->time_to_live = time_to_live;
+	file->inode_offset = inode_offset;
 
 	/*Write to disk*/
-	inode_buf = (uint8_t *) inode;
+	inode_buf = (uint8_t *) file;
 	buffer = malloc(sector_size);
 
 	for (i = 0; i < sizeof(struct INODE); ++i)
@@ -479,6 +489,27 @@ unsigned long size, unsigned int time_to_live, short custody)
 
 	return FS_OK;
 }
+
+
+/*Writes the given bit into the allocation table*/
+void write_alloc_table(uint index, uint8_t *table, bool bit_value)
+{
+	uint8_t temp_byte;
+	uint byte_index;
+	uint bit_index;
+
+	byte_index = index / 8;
+	bit_index = index % 8;
+	temp_byte = 0x80 >> bit_index;
+
+	if (bit_value) {
+		table[byte_index] |= temp_byte;
+	} else {
+		temp_byte ^= 0xFF;
+		table[byte_index] &= temp_byte;
+	}
+}
+
 /*
 enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod)
 {

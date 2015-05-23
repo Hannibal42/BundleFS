@@ -3,12 +3,12 @@
 void print_fs(struct FILE_SYSTEM *fs)
 {
 	printf("-----------------------File System-----------------------\n");
-	printf("Alloc_table:%lu\n", fs->alloc_table);
-	printf("Alloc_table_size:%lu\n", fs->alloc_table_size);
-	printf("Inode_Alloc_table:%lu\n", fs->inode_alloc_table);
-	printf("Inode_Alloc_table_size:%lu\n", fs->inode_alloc_table_size);
-	printf("inode_block:%lu\n", fs->inode_block);
-	printf("inode_block_size:%lu\n", fs->inode_block_size);
+	printf("Alloc_table:%d\n", fs->alloc_table);
+	printf("Alloc_table_size:%d\n", fs->alloc_table_size);
+	printf("Inode_Alloc_table:%d\n", fs->inode_alloc_table);
+	printf("Inode_Alloc_table_size:%d\n", fs->inode_alloc_table_size);
+	printf("inode_block:%d\n", fs->inode_block);
+	printf("inode_block_size:%d\n", fs->inode_block_size);
 }
 
 void print_disk(struct disk *disk)
@@ -16,8 +16,8 @@ void print_disk(struct disk *disk)
 	printf("-----------------------Disk-----------------------\n");
 	printf("Number:%c\n", disk->number);
 	printf("size:%lu\n", disk->size);
-	printf("sector_size:%lu\n", disk->sector_size);
-	printf("sector_count:%lu\n", disk->sector_count);
+	printf("sector_size:%d\n", disk->sector_size);
+	printf("sector_count:%d\n", disk->sector_count);
 	switch (disk->status) {
 	case STA_NOINIT:
 		printf("Status: STA_NOINIT");
@@ -44,7 +44,7 @@ void print_disk(struct disk *disk)
 void print_inode(struct INODE *file)
 {
 	printf("-----------------------Inode-----------------------\n");
-	printf("ID: %lu\n", file->id);
+	printf("ID: %d\n", file->id);
 	printf("Size: %d\n", file->size);
 	printf("creation date: %d\n", file->creation_date);
 	printf("last modified: %d\n", file->last_modified);
@@ -132,8 +132,8 @@ int main(void)
 	free(inode2);
 	free(inode3);
 	free(inode4);
-
-	/*
+	*/
+/*
 	printf("Number: %d\n", get_first_free_bit(0xFF));
 	printf("Number: %d\n", get_first_free_bit(0x7F));
 	printf("Number: %d\n", get_first_free_bit(0x3F));
