@@ -17,11 +17,14 @@ struct disk {
 	unsigned long size;/*size of the device in byte*/
 	char *file_name;
 	FILE *file;
-	unsigned long sector_size;
-	unsigned long sector_count;
+	uint sector_size;
+	uint sector_count;
 	enum DISK_STATUS status;
 };
 
-struct disk *make_disk(char *filename, uint size, uint sector_size);
+/*Fills the struct with the right parameters*/
+struct disk *disk_fill(char *filename, uint size, uint sector_size);
+/*Creates the file for the disk*/
+void disk_create(struct disk *disk, uint size);
 
 #endif /* DISK_H */

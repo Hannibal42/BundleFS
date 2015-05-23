@@ -25,16 +25,22 @@ enum DRESULT {
 	RES_NOTRDY/*Not ready*/
 };
 
-enum DRESULT disk_create(struct disk *disk,
-uint size);/*TODO: shouldnt be here...*/
+
+/*Returns the status of the disk*/
 enum DISK_STATUS disk_status(const struct disk *disk);
+/*Opens the filehandler for the disk*/
 enum DRESULT disk_initialize(struct disk *disk);
+/*Closes the filehandler*/
 enum DRESULT disk_shutdown(struct disk *disk);
-enum DRESULT disk_read(struct disk *disk, char *buff, unsigned long sector,
-	unsigned long number_of_sectors);
-enum DRESULT disk_write(struct disk *disk, char *buff, unsigned long sector,
-	unsigned long number_of_sectors);
+/*Reads from sector and stores the result in buff*/
+enum DRESULT disk_read(struct disk *disk, char *buff, uint sector,
+	uint number_of_sectors);
+/*Writes buff starting from sector*/
+enum DRESULT disk_write(struct disk *disk, char *buff, uint sector,
+	uint number_of_sectors);
+/*Returns information about the disk, see the defines for cmd*/
 enum DRESULT disk_ioctl(struct disk *disk, char cmd, unsigned long *buff);
+/*Returns the system time*/
 time_t system_get_time(void);
 
 #endif /* DISK_INTERFACE_H */

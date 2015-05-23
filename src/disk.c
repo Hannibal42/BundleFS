@@ -1,6 +1,6 @@
 #include "../h/disk.h"
 
-struct disk *make_disk(char *filename, uint size, uint sector_size)
+struct disk *disk_fill(char *filename, uint size, uint sector_size)
 {
 	struct disk *disk = (struct disk *) malloc(sizeof(struct disk));
 
@@ -11,4 +11,15 @@ struct disk *make_disk(char *filename, uint size, uint sector_size)
 	disk->file = NULL;
 	disk->status = STA_NOINIT;
 	return disk;
+}
+
+void disk_create(struct disk *disk, uint size)
+{
+
+	if (!disk)
+		return;
+
+	disk->file = fopen(disk->file_name, "w+b");
+	fseek(disk->file, 0, SEEK_SET);
+	fclose(disk->file);
 }

@@ -6,19 +6,6 @@ enum DISK_STATUS disk_status(const struct disk *disk)
 	return disk->status;
 }
 
-
-enum DRESULT disk_create(struct disk *disk, uint size)
-{
-
-	if (!disk)
-		return RES_PARERR;
-
-	disk->file = fopen(disk->file_name, "w+b");
-	fseek(disk->file, 0, SEEK_SET);
-	fclose(disk->file);
-	return RES_OK;
-}
-
 enum DRESULT disk_initialize(struct disk *disk)
 {
 	if (!disk)
@@ -30,7 +17,7 @@ enum DRESULT disk_initialize(struct disk *disk)
 		disk->status = STA_READY;
 		return RES_OK;
 	}
-	disk->status = STA_NOINIT;/*TODO:Change this. */
+	disk->status = STA_NOINIT;
 	return RES_ERROR;
 }
 
@@ -44,13 +31,13 @@ enum DRESULT disk_shutdown(struct disk *disk)
 	return RES_OK;
 }
 
-enum DRESULT disk_read(struct disk *disk, char *buff, unsigned long sector,
-	unsigned long number_of_sectors)
+enum DRESULT disk_read(struct disk *disk, char *buff, uint sector,
+	uint number_of_sectors)
 {
 	if (!disk)
 		return RES_PARERR;
 
-	int number_of_bytes = disk->sector_size * number_of_sectors;
+	unsigned long number_of_bytes = disk->sector_size * number_of_sectors;
 
 	if (number_of_bytes > disk->size)
 		return RES_PARERR;
@@ -61,10 +48,8 @@ enum DRESULT disk_read(struct disk *disk, char *buff, unsigned long sector,
 	return RES_OK;
 }
 
-/* You need to check if the buffer has the right size, otherwise your writing
-out of bound. */
-enum DRESULT disk_write(struct disk *disk, char *buff, unsigned long sector,
-	unsigned long number_of_sectors)
+enum DRESULT disk_write(struct disk *disk, char *buff, uint sector,
+	uint number_of_sectors)
 {
 	if (!disk)
 		return RES_PARERR;
@@ -99,36 +84,8 @@ enum DRESULT disk_ioctl(struct disk *disk, char cmd, unsigned long *buff)
 		return RES_OK;
 	case CTRL_ERASE_SECTOR:
 		/* Erase a sector */
-	return RES_ERROR;
+		return RES_ERROR;
 	default:
 		return RES_ERROR;
 	}
 }
-
-/*
-int main()
-{
-	struct disk* disk;
-	disk = make_disk("test.disk");
-	disk_initialize(disk);
-	char buff[64];
-	buff[0] = 0xFF;
-	buff[1] = 0xFF;
-	buff[2] = 0xFF;
-	int i;
-	for(i = 3; i < 64; ++i){
-		buff[i] = 0x0;
-	}
-	disk_write(disk, buff, 1, 1);
-	char buff2[64] = {0};
-	disk_read(disk,buff2,1,1);
-	disk_write(disk,buff2,2,1);
-	unsigned long out;
-	disk_ioctl(disk, GET_SECTOR_COUNT, &out);
-	printf( "%lu\n", out);
-	disk_ioctl(disk, GET_SECTOR_SIZE,  &out);
-	printf("%lu\n", out);
-	disk_shutdown(disk);
-	free(disk);
-	return 0;
-} */
