@@ -4,7 +4,7 @@
 struct disk *disk1, *disk2, *disk3, *disk4;
 struct FILE_SYSTEM fs1, fs2, fs3;
 
-extern void write_alloc_table(uint index, uint8_t *table, bool value);
+extern void write_bit(uint index, uint8_t *table, bool value);
 
 
 void setUp(void)
@@ -32,12 +32,6 @@ void setUp(void)
 	fs_mkfs(disk2);
 	fs_mkfs(disk3);
 	fs_mkfs(disk4);
-
-	fs_mount(disk1, &fs1);
-	struct INODE file;
-	fs_create(&fs1, &file, 80, 100,true);
-	print_fs(&fs1);
-	print_inode(&file);
 }
 
 
@@ -58,7 +52,7 @@ int mkfs_test(void)
 }
 
 
-int write_alloc_table_test(void)
+int write_bit_test(void)
 {
 	uint8_t *test_table;
 
@@ -69,27 +63,27 @@ int write_alloc_table_test(void)
 	test_table[3] = 0xFF;
 	test_table[4] = 0xFF;
 
-	write_alloc_table(0, test_table, 0);
+	write_bit(0, test_table, 0);
 	if (test_table[0] != 0x7F)
 		return false;
 
-	write_alloc_table(0, test_table, 1);
+	write_bit(0, test_table, 1);
 	if (test_table[0] != 0xFF)
 		return false;
 
-	write_alloc_table(8, test_table, 1);
+	write_bit(8, test_table, 1);
 	if (test_table[1] != 0xF8)
 		return false;
 
-	write_alloc_table(8, test_table, 0);
+	write_bit(8, test_table, 0);
 	if (test_table[1] != 0x78)
 		return false;
 
-	write_alloc_table(18, test_table, 1);
+	write_bit(18, test_table, 1);
 	if (test_table[2] != 0x20)
 		return false;
 
-	write_alloc_table(39, test_table, 0);
+	write_bit(39, test_table, 0);
 	if (test_table[4] != 0xFE)
 		return false;
 
@@ -103,7 +97,7 @@ int main(void)
 	if (!mkfs_test())
 		printf("Fehler in mkfs!\n");
 	tearDown();
-	if (!write_alloc_table_test())
+	if (!write_bit_test())
 		printf("Fehler in write_inode_alloc_table\n");
 	return 0;
 } */
@@ -113,16 +107,12 @@ int main(void)
 {
 	int i;
 	char *buffer;
-	struct disk *disk;
-	struct disk *disk2;
-	struct INODE *inode1;
-	struct INODE *inode2;
-	struct INODE *inode3;
-	struct INODE *inode4;
+	struct disk *disk, *disk2;
+	struct INODE *inode1, *inode2, *inode3, *inode4;
 	struct FILE_SYSTEM *fs;
 
 	disk = disk_fill("test.disk", 1024, 64);
-	disk_create(disk, 1024); //creates the file for the disk
+	disk_create(disk, 1024);
 	disk_initialize(disk);
 	print_disk(disk);
 
@@ -135,7 +125,6 @@ int main(void)
 	fs->disk = disk;
 	fs_mount(disk2, fs);
 	fs->disk = disk2;
-
 
 	inode1 = (struct INODE *) malloc(sizeof(struct INODE));
 	inode2 = (struct INODE *) malloc(sizeof(struct INODE));
@@ -174,10 +163,13 @@ int main(void)
 
 	for (i = 0; i < fs->sector_size; ++i)
 		buffer[i] = 0x01;
-
 	fs_write(fs, inode4, buffer);
 
+
 	print_inode(inode1);
+	print_inode(inode2);
+	inode2 = (struct INODE *) malloc(sizeof(struct INODE));
+	fs_open(fs, 1, inode2);
 	print_inode(inode2);
 	fs_delete(fs, inode1);
 
