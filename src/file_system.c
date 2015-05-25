@@ -269,7 +269,7 @@ unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs)
 
 	ret = 0;
 	for (i = 0; i < byte_count; ++i)
-		ret += (8 - popcount( (uint8_t) buffer[i]));
+		ret += (8 - popcount((uint8_t) buffer[i]));
 
 	free(buffer);
 	return ret * fs->sector_size;
@@ -384,18 +384,58 @@ int find_bit(uint8_t *table, uint size)
 	return -1;/* This should never happen */
 }
 
+int find_sequence_byte(uint8_t byte, uint length)
+{
+	uint i, tmp;
+	uint8_t temp_byte;
+
+	tmp = 0;
+	for (i = 0; i < 8; ++i) {
+		temp_byte = 0x80 >> i;
+		if ((byte & temp_byte) == 0x00)
+			tmp += 1;
+		else
+			tmp = 0;
+
+		if (tmp >= length)
+			return i - (tmp-1);
+	}
+	return -1;
+}
+
+/* TODO: Rewrite this shameful function */
 int find_sequence(uint8_t *table, uint table_size, uint length)
 {
+	int tmp;
 	uint k, temp_bit_count;
-	/*  */
+
 	k = 0;
 	temp_bit_count = 0;
+	tmp = 0;
+
+	if (length < 8) {
+		while (k < table_size) {
+			if (table[k] != 0xFF) {
+				tmp = find_sequence_byte(table[k], length);
+				if (tmp > 0) {
+					return k * 8 + tmp;
+				} else {
+					temp_bit_count += get_first_free_bit(table[k]);
+					if (temp_bit_count >= length)
+						return k * 8 - (temp_bit_count - get_first_free_bit(table[k]));
+					else
+						temp_bit_count = get_last_free_bit(table[k]);
+				}
+			}
+			k += 1; 
+		}
+		return -1;
+	}
+
 	while (k < table_size) {
 		if (table[k] == 0x00) {
 			temp_bit_count += 8;
 		} else if (table[k] == 0xFF) {
-			if (temp_bit_count >= length)
-				break;
 		} else {
 			/*Start of byte*/
 			if (temp_bit_count == 0) {
@@ -421,9 +461,11 @@ int find_sequence(uint8_t *table, uint table_size, uint length)
 		return -1;
 
 	/* Reset to start byte */
-	k = (k + 1) - round_up_div(length, 8);
+	/*TODO*/
+	k = k * 8 - length + get_first_free_bit(table[k]);
+	k += 8 - get_last_free_bit(table[k/8]);
 	/* Calculate bit position */
-	return k * 8 + (8 - get_last_free_bit(table[k]));
+	return k;
 }
 
 int get_free_bit(uint8_t index, uint8_t byte)
@@ -449,7 +491,7 @@ void write_seq(uint index, uint length, uint8_t *table)
 	start_byte = index / 8;
 	tmp = length;
 	startpadding = 8 - (index % 8);
-	end_byte = start_byte + ((length + (index % 8))/ 8);
+	end_byte = start_byte + ((length + (index % 8)) / 8);
 
 	/* Start byte */
 	if (tmp > startpadding) {
@@ -481,7 +523,7 @@ void delete_seq(uint index, uint length, uint8_t *table)
 	start_byte = index / 8;
 	tmp = length;
 	startpadding = 8 - (index % 8);
-	end_byte = start_byte + ((length + (index % 8))/ 8);
+	end_byte = start_byte + ((length + (index % 8)) / 8);
 
 	/* Start byte */
 	if (tmp > startpadding) {

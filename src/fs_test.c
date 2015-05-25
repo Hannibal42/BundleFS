@@ -27,11 +27,11 @@ bool popcount_test(void)
 
 	for (i = 0; i < 255; ++i) {
 		count = 0;
-		tmp = i; 
+		tmp = i;
 		for (k = 128; k > 0; k /= 2) {
 			if (tmp / k) {
 				count += 1;
-				tmp -= k; 
+				tmp -= k;
 			}
 		}
 		if (popcount(i) != count)
@@ -72,7 +72,7 @@ bool get_last_free_bit_test(void)
 	if (get_last_free_bit(temp) != 0)
 		return false;
 
-	return true; 
+	return true;
 }
 
 
@@ -133,7 +133,7 @@ bool find_bit_test(void)
 
 	return true;
 }
-
+/* TODO: More cases */
 bool find_sequence_test(void)
 {
 	uint i;
@@ -183,14 +183,14 @@ bool write_seq_test(void)
 		if (table1_empty[i] != 0x00)
 			return false;
 
-	write_seq(7,1, table1_empty);
+	write_seq(7, 1, table1_empty);
 	if (table1_empty[0] != 0xFF)
 		return false;
 	for (i = 1; i < 64; ++i)
 		if (table1_empty[i] != 0x00)
 			return false;
 
-	write_seq(8,15, table1_empty);
+	write_seq(8, 15, table1_empty);
 	if (table1_empty[1] != 0xFF)
 		return false;
 	if (table1_empty[2] != 0xFE)
@@ -199,7 +199,7 @@ bool write_seq_test(void)
 		if (table1_empty[i] != 0x00)
 			return false;
 
-	write_seq(25,10, table1_empty);
+	write_seq(25, 10, table1_empty);
 	if (table1_empty[0] != 0xFF)
 		return false;
 	if (table1_empty[1] != 0xFF)
@@ -246,7 +246,7 @@ bool delete_seq_test(void)
 		if (table1[i] != 0xFF)
 			return false;
 
-	delete_seq(0 ,512, table1);
+	delete_seq(0, 512, table1);
 	for (i = 0; i < 64; ++i)
 		if (table1[i] != 0x00)
 			return false;
