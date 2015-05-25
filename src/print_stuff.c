@@ -1,5 +1,8 @@
 #include "../h/print_stuff.h"
 
+extern int get_first_free_bit(uint8_t byte);
+extern int get_last_free_bit(uint8_t byte);
+
 void print_fs(struct FILE_SYSTEM *fs)
 {
 	printf("-----------------------File System-----------------------\n");
@@ -53,4 +56,30 @@ void print_inode(struct INODE *file)
 	printf("inode offset: %d\n", file->inode_offset);
 	printf("custody: %hu\n", file->custody);
 	printf("TTL: %d\n", file->time_to_live);
+}
+
+
+void print_get_free_bit(void)
+{
+	printf("---------------get_first_free_bit -------------------\n");
+	printf("Number: %d\n", get_first_free_bit(0xFF));
+	printf("Number: %d\n", get_first_free_bit(0x7F));
+	printf("Number: %d\n", get_first_free_bit(0x3F));
+	printf("Number: %d\n", get_first_free_bit(0x1F));
+	printf("Number: %d\n", get_first_free_bit(0x0F));
+	printf("Number: %d\n", get_first_free_bit(0x07));
+	printf("Number: %d\n", get_first_free_bit(0x03));
+	printf("Number: %d\n", get_first_free_bit(0x01));
+	printf("Number: %d\n", get_first_free_bit(0x00));
+
+	printf("---------------get_last_free_bit -------------------\n");
+	printf("Number: %d\n", get_last_free_bit(0xFF));
+	printf("Number: %d\n", get_last_free_bit(0xFE));
+	printf("Number: %d\n", get_last_free_bit(0xFC));
+	printf("Number: %d\n", get_last_free_bit(0xF8));
+	printf("Number: %d\n", get_last_free_bit(0xF0));
+	printf("Number: %d\n", get_last_free_bit(0xE0));
+	printf("Number: %d\n", get_last_free_bit(0xC0));
+	printf("Number: %d\n", get_last_free_bit(0x80));
+	printf("Number: %d\n", get_last_free_bit(0x00));
 }

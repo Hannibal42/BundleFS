@@ -3,57 +3,23 @@
 
 /*Writes the given bit into the allocation table*/
 void write_bit(uint index, uint8_t *table, bool value);
-
-int find_bit(uint8_t *table, uint size);
-
+/* Finds the first free bit */
+int find_bit(uint8_t *table, uint length);
+/* Finds the first free sequence of the given length */
 int find_sequence(uint8_t *table, uint table_size, uint length);
 /* Writes a sequence of 1 */
 void write_seq(uint index, uint length, uint8_t *table);
 /* Lets the bits toggle */
 void delete_seq(uint index, uint length, uint8_t *table);
-
+int get_first_free_bit(uint8_t byte);
+int get_last_free_bit(uint8_t byte);
+int get_free_bit(uint8_t index, uint8_t byte);
+int popcount(uint8_t byte);
 inline unsigned long round_up_div(unsigned long dividend,
-	unsigned long divisor)
-{
-	return (dividend + divisor - 1) / divisor;
-}
-
-int get_first_free_bit(uint8_t byte)
-{
-	int i;
-	uint8_t temp = 0xFF;
-
-	for (i = 8; i >= 0; --i) {
-		if ((byte & (temp << i)) != 0x00)
-			return (i * (-1)) + 7;
-	}
-	return 8;
-}
-
-int get_last_free_bit(uint8_t byte)
-{
-	int i;
-	uint8_t temp = 0xFF;
-
-	for (i = 8; i >= 0; --i) {
-		if ((byte & (temp >> i)) != 0x00)
-			return (i * (-1)) + 7;
-	}
-	return 8;
-}
-
-/*stolen from the internet, counts the 1 bits in a byte*/
-int popcount(unsigned char x)
-{
-	return ((0x876543210 >>
-	(((0x4332322132212110 >> ((x & 0xF) << 2)) & 0xF) << 2)) >>
-	((0x4332322132212110 >> (((x & 0xF0) >> 2)) & 0xF) << 2))
-	& 0xf;
-}
+	unsigned long divisor);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
-
 	/*Check if the drive is ready*/
 	unsigned int i;
 	struct FILE_SYSTEM *fs;/*the file system to be created*/
@@ -216,6 +182,7 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	free(IN_table);
 	free(buffer);
 
+	/* TODO: Define a good error value */
 	file->location = 0xFFFFFFFF;
 
 	return FS_OK;
@@ -302,7 +269,7 @@ unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs)
 
 	ret = 0;
 	for (i = 0; i < byte_count; ++i)
-		ret += (8 - popcount(buffer[i]));
+		ret += (8 - popcount( (uint8_t) buffer[i]));
 
 	free(buffer);
 	return ret * fs->sector_size;
@@ -426,6 +393,9 @@ int find_sequence(uint8_t *table, uint table_size, uint length)
 	while (k < table_size) {
 		if (table[k] == 0x00) {
 			temp_bit_count += 8;
+		} else if (table[k] == 0xFF) {
+			if (temp_bit_count >= length)
+				break;
 		} else {
 			/*Start of byte*/
 			if (temp_bit_count == 0) {
@@ -456,73 +426,116 @@ int find_sequence(uint8_t *table, uint table_size, uint length)
 	return k * 8 + (8 - get_last_free_bit(table[k]));
 }
 
+int get_free_bit(uint8_t index, uint8_t byte)
+{
+	int i;
+	uint8_t temp = 0x80;
+
+	if (index > 7)
+		return -1;
+
+	for (i = index; i < 8; ++i) {
+		if ((byte & (temp >> i)) != 0x00)
+			return (i - index);
+	}
+	return (i - index);
+}
+
 void write_seq(uint index, uint length, uint8_t *table)
 {
-	uint temp_bit_count, startpadding, i, start, temp_byte;
+	uint tmp, startpadding, i, start_byte, end_byte;
+	uint8_t temp_byte;
 
-	start = index / 8;
-	temp_bit_count = length;
+	start_byte = index / 8;
+	tmp = length;
 	startpadding = 8 - (index % 8);
+	end_byte = start_byte + ((length + (index % 8))/ 8);
 
-	/*Writes the bits into the alloc_table*/
-	for (i = start; i < (start + length); ++i) {
-		/*Start*/
-		if (temp_bit_count == length) {
-			if (temp_bit_count > startpadding) {
-				temp_byte = 0xFF >> (8 - startpadding);
-				table[i] |= temp_byte;
-				temp_bit_count -= startpadding;
-			} else {
-				temp_byte = 0xFF << (8 - temp_bit_count);
-				temp_byte = temp_byte >> (8 - startpadding);
-				table[i] |= temp_byte;
-			}
+	/* Start byte */
+	if (tmp > startpadding) {
+		temp_byte = 0xFF >> (8 - startpadding);
+		tmp -= startpadding;
+	} else {
+		temp_byte = 0xFF << (8 - tmp);
+		temp_byte = temp_byte >> (8 - startpadding);
+		tmp = 0;
+	}
+	table[start_byte] |= temp_byte;
+
+	for (i = (start_byte + 1); i <= end_byte; ++i) {
+		if (i == end_byte) {
+			temp_byte = 0xFF << (8 - tmp);
+			table[i] |= temp_byte;
 		} else {
-			/*End*/
-			if (i == (length - 1)) {
-				temp_byte = 0xFF << (8 - temp_bit_count);
-				table[i] |= temp_byte;
-			} /*Middle*/else {
-				table[i] = 0xFF;
-				temp_bit_count -= 8;
-			}
+			table[i] = 0xFF;
+			tmp -= 8;
 		}
 	}
 }
 
-/* TODO: Fix This function only lets the bits toggel */
 void delete_seq(uint index, uint length, uint8_t *table)
 {
-	uint temp_bit_count, startpadding, i, start, temp_byte;
+	uint tmp, startpadding, i, start_byte, end_byte;
+	uint8_t temp_byte;
 
-	start = index / 8;
-	temp_bit_count = length;
+	start_byte = index / 8;
+	tmp = length;
 	startpadding = 8 - (index % 8);
+	end_byte = start_byte + ((length + (index % 8))/ 8);
 
-	/*Writes the bits into the alloc_table*/
-	for (i = start; i < (start + length); ++i) {
-		/*Start*/
-		if (temp_bit_count == length) {
-			if (temp_bit_count > startpadding) {
-				temp_byte = 0xFF >> (8 - startpadding);
-				table[i] ^= temp_byte;
-				temp_bit_count -= startpadding;
-			} else {
-				temp_byte = 0xFF << (8 - temp_bit_count);
-				temp_byte = temp_byte >> (8 - startpadding);
-				table[i] ^= temp_byte;
-			}
+	/* Start byte */
+	if (tmp > startpadding) {
+		temp_byte = 0xFF << startpadding;
+		tmp -= startpadding;
+	} else {
+		temp_byte = 0xFF << startpadding;
+		tmp = 8 - (startpadding - tmp);
+		temp_byte |= 0xFF >> tmp;
+		tmp = 0;
+	}
+	table[start_byte] &= temp_byte;
+
+	for (i = (start_byte + 1); i <= end_byte; ++i) {
+		if (i == end_byte) {
+			temp_byte = 0xFF >> tmp;
+			table[i] &= temp_byte;
 		} else {
-			/*End*/
-			if (i == (length - 1)) {
-				temp_byte = 0xFF << (8 - temp_bit_count);
-				table[i] ^= temp_byte;
-			} /*Middle*/else {
-				table[i] = 0xFF;
-				temp_bit_count -= 8;
-			}
+			table[i] = 0x00;
+			tmp -= 8;
 		}
 	}
+}
+
+inline unsigned long round_up_div(unsigned long dividend,
+	unsigned long divisor)
+{
+	return (dividend + divisor - 1) / divisor;
+}
+
+int get_first_free_bit(uint8_t byte)
+{
+	return get_free_bit(0, byte);
+}
+
+int get_last_free_bit(uint8_t byte)
+{
+	int i;
+	uint8_t temp = 0xFF;
+
+	for (i = 8; i >= 0; --i) {
+		if ((byte & (temp >> i)) != 0x00)
+			return 7 - i;
+	}
+	return 8;
+}
+
+/*stolen from the internet, counts the 1 bits in a byte*/
+int popcount(uint8_t byte)
+{
+	return ((0x876543210 >>
+	(((0x4332322132212110 >> ((byte & 0xF) << 2)) & 0xF) << 2)) >>
+	((0x4332322132212110 >> (((byte & 0xF0) >> 2)) & 0xF) << 2))
+	& 0xf;
 }
 
 /*
