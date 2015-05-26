@@ -1,7 +1,7 @@
 #include "../h/print_stuff.h"
 
-extern int get_first_free_bit(uint8_t byte);
-extern int get_last_free_bit(uint8_t byte);
+extern int first_free_bits(uint8_t byte);
+extern int last_free_bits(uint8_t byte);
 
 void print_fs(struct FILE_SYSTEM *fs)
 {
@@ -61,25 +61,25 @@ void print_inode(struct INODE *file)
 
 void print_get_free_bit(void)
 {
-	printf("---------------get_first_free_bit -------------------\n");
-	printf("Number: %d\n", get_first_free_bit(0xFF));
-	printf("Number: %d\n", get_first_free_bit(0x7F));
-	printf("Number: %d\n", get_first_free_bit(0x3F));
-	printf("Number: %d\n", get_first_free_bit(0x1F));
-	printf("Number: %d\n", get_first_free_bit(0x0F));
-	printf("Number: %d\n", get_first_free_bit(0x07));
-	printf("Number: %d\n", get_first_free_bit(0x03));
-	printf("Number: %d\n", get_first_free_bit(0x01));
-	printf("Number: %d\n", get_first_free_bit(0x00));
+	printf("---------------first_free_bits -------------------\n");
+	printf("Number: %d\n", first_free_bits(0xFF));
+	printf("Number: %d\n", first_free_bits(0x7F));
+	printf("Number: %d\n", first_free_bits(0x3F));
+	printf("Number: %d\n", first_free_bits(0x1F));
+	printf("Number: %d\n", first_free_bits(0x0F));
+	printf("Number: %d\n", first_free_bits(0x07));
+	printf("Number: %d\n", first_free_bits(0x03));
+	printf("Number: %d\n", first_free_bits(0x01));
+	printf("Number: %d\n", first_free_bits(0x00));
 
-	printf("---------------get_last_free_bit -------------------\n");
-	printf("Number: %d\n", get_last_free_bit(0xFF));
-	printf("Number: %d\n", get_last_free_bit(0xFE));
-	printf("Number: %d\n", get_last_free_bit(0xFC));
-	printf("Number: %d\n", get_last_free_bit(0xF8));
-	printf("Number: %d\n", get_last_free_bit(0xF0));
-	printf("Number: %d\n", get_last_free_bit(0xE0));
-	printf("Number: %d\n", get_last_free_bit(0xC0));
-	printf("Number: %d\n", get_last_free_bit(0x80));
-	printf("Number: %d\n", get_last_free_bit(0x00));
+	printf("---------------last_free_bits -------------------\n");
+	printf("Number: %d\n", last_free_bits(0xFF));
+	printf("Number: %d\n", last_free_bits(0xFE));
+	printf("Number: %d\n", last_free_bits(0xFC));
+	printf("Number: %d\n", last_free_bits(0xF8));
+	printf("Number: %d\n", last_free_bits(0xF0));
+	printf("Number: %d\n", last_free_bits(0xE0));
+	printf("Number: %d\n", last_free_bits(0xC0));
+	printf("Number: %d\n", last_free_bits(0x80));
+	printf("Number: %d\n", last_free_bits(0x00));
 }

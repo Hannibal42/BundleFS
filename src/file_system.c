@@ -11,11 +11,12 @@ int find_sequence(uint8_t *table, uint table_size, uint length);
 void write_seq(uint index, uint length, uint8_t *table);
 /* Lets the bits toggle */
 void delete_seq(uint index, uint length, uint8_t *table);
-int get_first_free_bit(uint8_t byte);
-int get_last_free_bit(uint8_t byte);
+int first_free_bits(uint8_t byte);
+int last_free_bits(uint8_t byte);
 int get_free_bit(uint8_t index, uint8_t byte);
 int popcount(uint8_t byte);
-inline unsigned long round_up_div(unsigned long dividend,
+int find_sequence_small(uint8_t *table, uint table_size, uint length);
+inline unsigned long div_up(unsigned long dividend,
 	unsigned long divisor);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
@@ -26,7 +27,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	unsigned long sector_count, sector_size, max_file_count;
 	unsigned long size, dif;
 	unsigned long superblock_size; /*Size of the superblock in sectors*/
-	char *temparray; /*Used to make the fs superblock*/
+	char *tmparray; /*Used to make the fs superblock*/
 
 	/*Gets the sector size*/
 	if (disk_ioctl(disk, GET_SECTOR_SIZE, &sector_size) != RES_OK)
@@ -37,7 +38,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 		return FS_ERROR;
 
 	fs = (struct FILE_SYSTEM *) malloc(sizeof(struct FILE_SYSTEM));
-	superblock_size = round_up_div(sizeof(struct FILE_SYSTEM), sector_size);
+	superblock_size = div_up(sizeof(struct FILE_SYSTEM), sector_size);
 
 	/*TODO:Change this to a better thing*/
 	max_file_count = sector_count / 8;
@@ -45,60 +46,60 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 		max_file_count = 8;
 
 	/*The number of sectors needed for the allocation table*/
-	fs->alloc_table_size = round_up_div(sector_count, sector_size * 8);
+	fs->alloc_table_size = div_up(sector_count, sector_size * 8);
 	fs->alloc_table = superblock_size; /*first comes the superblock*/
 	size = sector_size * fs->alloc_table_size;
 	/*Calculates the padding of the sector*/
-	dif = round_up_div(sector_count, 8) % sector_size;
+	dif = div_up(sector_count, 8) % sector_size;
 	dif = (fs->alloc_table_size - 1) * sector_size + dif;
 	if (sector_count % 8 != 0)
 		/*TODO:This should never happen if you used the right
 		numbers for the fs */
 		dif = dif - 1;
-	temparray = malloc(sizeof(char) * size);
+	tmparray = malloc(sizeof(char) * size);
 	for (i = 0; i < size; ++i) {
 		if (i >= dif)
-			temparray[i] = 0xFF;
+			tmparray[i] = 0xFF;
 		else
-			temparray[i] = 0x00;
+			tmparray[i] = 0x00;
 	}
 
-	disk_write(disk, temparray, fs->alloc_table, fs->alloc_table_size);
-	free(temparray);
+	disk_write(disk, tmparray, fs->alloc_table, fs->alloc_table_size);
+	free(tmparray);
 
 	/*Make inode_alloc_table*/
-	fs->inode_alloc_table_size = round_up_div(max_file_count,
+	fs->inode_alloc_table_size = div_up(max_file_count,
 		sector_size * 8);
 	fs->inode_alloc_table = fs->alloc_table + fs->alloc_table_size;
 
 	size = sector_size * fs->inode_alloc_table_size;
 
-	dif = round_up_div(max_file_count, 8) % sector_size;
+	dif = div_up(max_file_count, 8) % sector_size;
 	dif = (fs->inode_alloc_table_size - 1) * sector_size + dif;
 	if (sector_count % 8 != 0) /*TODO: This should never happen. */
 		dif = dif - 1;
-	temparray = malloc(sizeof(char) * size);
+	tmparray = malloc(sizeof(char) * size);
 	for (i = 0; i < size; ++i) {
 		if (i >= dif)
-			temparray[i] = 0xFF;
+			tmparray[i] = 0xFF;
 		else
-			temparray[i] = 0x00;
+			tmparray[i] = 0x00;
 	}
-	disk_write(disk, temparray, fs->inode_alloc_table,
+	disk_write(disk, tmparray, fs->inode_alloc_table,
 	fs->inode_alloc_table_size);
-	free(temparray);
+	free(tmparray);
 
 	/*Make Inode Block*/
 	fs->inode_block_size = max_file_count;
 	fs->inode_block = fs->inode_alloc_table + fs->inode_alloc_table_size;
 	fs->sector_size = sector_size;
 	size = sector_size * fs->inode_block_size;
-	temparray = malloc(sizeof(struct INODE) * size);
+	tmparray = malloc(sizeof(struct INODE) * size);
 	for (i = 0; i < size; ++i)
-		temparray[i] = 0x0;
+		tmparray[i] = 0x0;
 
-	disk_write(disk, temparray, fs->inode_block, fs->inode_block_size);
-	free(temparray);
+	disk_write(disk, tmparray, fs->inode_block, fs->inode_block_size);
+	free(tmparray);
 	/*Make superblock*/
 	disk_write(disk, (char *) fs, 0, superblock_size);
 	/*TODO: Make a padding, so no random memory is writen to disk*/
@@ -113,16 +114,16 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 {
 	unsigned int i;
 	uint8_t *buffer;
-	struct INODE *temp;
+	struct INODE *tmp;
 
 	buffer = malloc(fs->sector_size * fs->inode_block_size);
 	disk_read(fs->disk, (char *) buffer, fs->inode_block,
 		fs->inode_block_size);
 
 	for (i = 0; i < fs->inode_block_size; ++i) {
-		temp = (struct INODE *) buffer;
+		tmp = (struct INODE *) buffer;
 		buffer += fs->sector_size;
-		if (temp->id == number)
+		if (tmp->id == number)
 			break;
 	}
 	/*Resets the pointer, so that free can be called*/
@@ -132,15 +133,15 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	if (i >= fs->inode_block_size)
 		return FS_ERROR;
 	/* TODO: Copy the memory direct */
-	file->id = temp->id;
-	file->size = temp->size;
-	file->creation_date = temp->creation_date;
-	file->inode_offset = temp->inode_offset;
-	file->last_modified = temp->last_modified;
+	file->id = tmp->id;
+	file->size = tmp->size;
+	file->creation_date = tmp->creation_date;
+	file->inode_offset = tmp->inode_offset;
+	file->last_modified = tmp->last_modified;
 	file->offset = 0;
-	file->location = temp->location;
-	file->custody = temp->custody;
-	file->time_to_live = temp->time_to_live;
+	file->location = tmp->location;
+	file->custody = tmp->custody;
+	file->time_to_live = tmp->time_to_live;
 
 	free(buffer);
 	buffer = NULL;
@@ -157,7 +158,7 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	alloc_table = malloc(fs->sector_size * fs->alloc_table_size);
 	disk_read(fs->disk, (char *) alloc_table, fs->alloc_table,
 		fs->alloc_table_size);
-	bit_length = round_up_div(file->size, fs->sector_size);
+	bit_length = div_up(file->size, fs->sector_size);
 	delete_seq(file->location, bit_length, alloc_table);
 
 	/*Free bit in inode_table*/
@@ -195,7 +196,7 @@ enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
 	unsigned int offset;
 
 	offset = fs->inode_block + fs->inode_block_size;
-	sector_count = round_up_div(file->size, fs->sector_size);
+	sector_count = div_up(file->size, fs->sector_size);
 	/*TODO: Breaks if the buffer has the wrong size */
 	disk_read(fs->disk, buffer, file->location + offset, sector_count);
 	return FS_OK;
@@ -208,7 +209,7 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 	unsigned int offset;
 
 	offset = fs->inode_block + fs->inode_block_size;
-	sector_count = round_up_div(file->size, fs->sector_size);
+	sector_count = div_up(file->size, fs->sector_size);
 	file->last_modified = (uint) time(NULL);
 
 	disk_write(fs->disk, buffer, offset + file->location, sector_count);
@@ -231,20 +232,20 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
 	if (disk_ioctl(disk, GET_SECTOR_SIZE, &sector_size) != RES_OK)
 		return FS_ERROR;
 
-	superblock_size = round_up_div(sizeof(struct FILE_SYSTEM), sector_size);
+	superblock_size = div_up(sizeof(struct FILE_SYSTEM), sector_size);
 	buffer = (char *) malloc(superblock_size * sector_size);
 
 	disk_read(disk, buffer, 0, superblock_size);
 
-	struct FILE_SYSTEM *tempFS = (struct FILE_SYSTEM *) buffer;
+	struct FILE_SYSTEM *tmpFS = (struct FILE_SYSTEM *) buffer;
 
-	fs->alloc_table = tempFS->alloc_table;
-	fs->alloc_table_size = tempFS->alloc_table_size;
-	fs->inode_alloc_table = tempFS->inode_alloc_table;
-	fs->inode_alloc_table_size = tempFS->inode_alloc_table_size;
-	fs->inode_block = tempFS->inode_block;
-	fs->inode_block_size = tempFS->inode_block_size;
-	fs->sector_size = tempFS->sector_size;
+	fs->alloc_table = tmpFS->alloc_table;
+	fs->alloc_table_size = tmpFS->alloc_table_size;
+	fs->inode_alloc_table = tmpFS->inode_alloc_table;
+	fs->inode_alloc_table_size = tmpFS->inode_alloc_table_size;
+	fs->inode_block = tmpFS->inode_block;
+	fs->inode_block_size = tmpFS->inode_block_size;
+	fs->sector_size = tmpFS->sector_size;
 
 	free(buffer);
 	buffer = NULL;
@@ -262,7 +263,7 @@ unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs)
 	if (disk_ioctl(disk, GET_SECTOR_COUNT, &sector_count) != RES_OK)
 		return FS_ERROR;
 
-	byte_count = round_up_div(sector_count, 8);
+	byte_count = div_up(sector_count, 8);
 
 	buffer = (char *) malloc(fs->alloc_table_size * fs->sector_size);
 	disk_read(disk, buffer, fs->alloc_table, fs->alloc_table_size);
@@ -282,7 +283,7 @@ unsigned long size, uint time_to_live, bool custody)
 	bytes_AL_table;
 	uint8_t *IN_buf, *IN_table, *AL_table, *buffer;
 
-	bit_count = round_up_div(size, fs->sector_size);
+	bit_count = div_up(size, fs->sector_size);
 	AL_table  = malloc(fs->alloc_table_size * fs->sector_size);
 	IN_table  = malloc(fs->inode_alloc_table_size * fs->sector_size);
 
@@ -345,19 +346,19 @@ unsigned long size, uint time_to_live, bool custody)
 /*Writes the given bit into the allocation table*/
 void write_bit(uint index, uint8_t *table, bool bit_value)
 {
-	uint8_t temp_byte;
+	uint8_t tmp_byte;
 	uint byte_index;
 	uint bit_index;
 
 	byte_index = index / 8;
 	bit_index = index % 8;
-	temp_byte = 0x80 >> bit_index;
+	tmp_byte = 0x80 >> bit_index;
 
 	if (bit_value) {
-		table[byte_index] |= temp_byte;
+		table[byte_index] |= tmp_byte;
 	} else {
-		temp_byte ^= 0xFF;
-		table[byte_index] &= temp_byte;
+		tmp_byte ^= 0xFF;
+		table[byte_index] &= tmp_byte;
 	}
 }
 
@@ -365,7 +366,7 @@ void write_bit(uint index, uint8_t *table, bool bit_value)
 int find_bit(uint8_t *table, uint size)
 {
 	uint i, k;
-	uint8_t temp_byte;
+	uint8_t tmp_byte;
 
 	for (i = 0; i < size; ++i) {
 		if (table[i] != 0xFF)
@@ -377,8 +378,8 @@ int find_bit(uint8_t *table, uint size)
 		return -1;
 
 	for (k = 0; k < 8; ++k) {
-		temp_byte = 0x80 >> k;
-		if ((table[i] & temp_byte) == 0x00)
+		tmp_byte = 0x80 >> k;
+		if ((table[i] & tmp_byte) == 0x00)
 			return (8 * i) + k;
 	}
 	return -1;/* This should never happen */
@@ -387,12 +388,12 @@ int find_bit(uint8_t *table, uint size)
 int find_sequence_byte(uint8_t byte, uint length)
 {
 	uint i, tmp;
-	uint8_t temp_byte;
+	uint8_t tmp_byte;
 
 	tmp = 0;
 	for (i = 0; i < 8; ++i) {
-		temp_byte = 0x80 >> i;
-		if ((byte & temp_byte) == 0x00)
+		tmp_byte = 0x80 >> i;
+		if ((byte & tmp_byte) == 0x00)
 			tmp += 1;
 		else
 			tmp = 0;
@@ -403,81 +404,73 @@ int find_sequence_byte(uint8_t byte, uint length)
 	return -1;
 }
 
+/* lenght must be < 9 for this, and the table must be > 0*/
+int find_sequence_small(uint8_t *table, uint table_size, uint length)
+{
+	uint i;
+	int tmp;
+
+	tmp = find_sequence_byte(table[0], length);
+	if (tmp > 0)
+		return tmp;
+	tmp = last_free_bits(table[0]);
+	for (i = 1; i < table_size; ++i) {
+		/* Small optimization */
+		if (table[i] == 0xFF) {
+			tmp = 0;
+			continue;
+		}
+
+		tmp += first_free_bits(table[i]);
+		if (tmp >= length)
+			return i * 8 - last_free_bits(table[i-1]);
+		tmp = find_sequence_byte(table[i], length);
+		if (tmp > 0)
+			return i * 8 + tmp;
+		tmp = last_free_bits(table[i]);
+	}
+	return -1;
+}
+
 /* TODO: Rewrite this shameful function */
 int find_sequence(uint8_t *table, uint table_size, uint length)
 {
 	int tmp;
-	uint k, temp_bit_count;
+	uint i, start;
 
-	k = 0;
-	temp_bit_count = 0;
+	if (length < 9)
+		return find_sequence_small(table, table_size, length);
+
 	tmp = 0;
-
-	if (length < 8) {
-		while (k < table_size) {
-			if (table[k] != 0xFF) {
-				tmp = find_sequence_byte(table[k], length);
-				if (tmp > 0) {
-					return k * 8 + tmp;
-				} else {
-					temp_bit_count += get_first_free_bit(table[k]);
-					if (temp_bit_count >= length)
-						return k * 8 - (temp_bit_count - get_first_free_bit(table[k]));
-					else
-						temp_bit_count = get_last_free_bit(table[k]);
-				}
-			}
-			k += 1; 
-		}
-		return -1;
-	}
-
-	while (k < table_size) {
-		if (table[k] == 0x00) {
-			temp_bit_count += 8;
-		} else if (table[k] == 0xFF) {
+	start = 0;
+	for (i = 0; i < table_size; ++i) {
+		if (table[i] == 0x00) {
+			tmp += 8;
+			if (tmp >= length)
+				return (start * 8) +
+				(8 - last_free_bits(table[start]));
 		} else {
-			/*Start of byte*/
-			if (temp_bit_count == 0) {
-				/*TODO: What does happen if the sequence would
-				be in the middle of the byte? */
-				temp_bit_count += get_last_free_bit(table[k]);
-			} else {
-				/*End of byte*/
-				temp_bit_count += get_first_free_bit(table[k]);
-				if (temp_bit_count >= length)
-					break;
-				temp_bit_count = 0;
-			}
+			tmp += first_free_bits(table[i]);
+			if (tmp >= length)
+				return (start * 8) +
+				(8 - last_free_bits(table[start]));
+			tmp = last_free_bits(table[i]);
+			start = i;
 		}
-		/*End normal*/
-		if (temp_bit_count >= length)
-			break;
-		k += 1;
 	}
-
-	/* Found no sequence */
-	if (temp_bit_count <= length)
-		return -1;
-
-	/* Reset to start byte */
-	/*TODO*/
-	k = k * 8 - length + get_first_free_bit(table[k]);
-	k += 8 - get_last_free_bit(table[k/8]);
-	/* Calculate bit position */
-	return k;
+	return -1;
 }
 
 int get_free_bit(uint8_t index, uint8_t byte)
 {
 	int i;
-	uint8_t temp = 0x80;
+	uint8_t tmp = 0x80;
 
 	if (index > 7)
 		return -1;
 
 	for (i = index; i < 8; ++i) {
-		if ((byte & (temp >> i)) != 0x00)
+		if ((byte & (tmp >> i)) != 0x00)
 			return (i - index);
 	}
 	return (i - index);
@@ -486,7 +479,7 @@ int get_free_bit(uint8_t index, uint8_t byte)
 void write_seq(uint index, uint length, uint8_t *table)
 {
 	uint tmp, startpadding, i, start_byte, end_byte;
-	uint8_t temp_byte;
+	uint8_t tmp_byte;
 
 	start_byte = index / 8;
 	tmp = length;
@@ -495,19 +488,19 @@ void write_seq(uint index, uint length, uint8_t *table)
 
 	/* Start byte */
 	if (tmp > startpadding) {
-		temp_byte = 0xFF >> (8 - startpadding);
+		tmp_byte = 0xFF >> (8 - startpadding);
 		tmp -= startpadding;
 	} else {
-		temp_byte = 0xFF << (8 - tmp);
-		temp_byte = temp_byte >> (8 - startpadding);
+		tmp_byte = 0xFF << (8 - tmp);
+		tmp_byte = tmp_byte >> (8 - startpadding);
 		tmp = 0;
 	}
-	table[start_byte] |= temp_byte;
+	table[start_byte] |= tmp_byte;
 
 	for (i = (start_byte + 1); i <= end_byte; ++i) {
 		if (i == end_byte) {
-			temp_byte = 0xFF << (8 - tmp);
-			table[i] |= temp_byte;
+			tmp_byte = 0xFF << (8 - tmp);
+			table[i] |= tmp_byte;
 		} else {
 			table[i] = 0xFF;
 			tmp -= 8;
@@ -518,7 +511,7 @@ void write_seq(uint index, uint length, uint8_t *table)
 void delete_seq(uint index, uint length, uint8_t *table)
 {
 	uint tmp, startpadding, i, start_byte, end_byte;
-	uint8_t temp_byte;
+	uint8_t tmp_byte;
 
 	start_byte = index / 8;
 	tmp = length;
@@ -527,20 +520,20 @@ void delete_seq(uint index, uint length, uint8_t *table)
 
 	/* Start byte */
 	if (tmp > startpadding) {
-		temp_byte = 0xFF << startpadding;
+		tmp_byte = 0xFF << startpadding;
 		tmp -= startpadding;
 	} else {
-		temp_byte = 0xFF << startpadding;
+		tmp_byte = 0xFF << startpadding;
 		tmp = 8 - (startpadding - tmp);
-		temp_byte |= 0xFF >> tmp;
+		tmp_byte |= 0xFF >> tmp;
 		tmp = 0;
 	}
-	table[start_byte] &= temp_byte;
+	table[start_byte] &= tmp_byte;
 
 	for (i = (start_byte + 1); i <= end_byte; ++i) {
 		if (i == end_byte) {
-			temp_byte = 0xFF >> tmp;
-			table[i] &= temp_byte;
+			tmp_byte = 0xFF >> tmp;
+			table[i] &= tmp_byte;
 		} else {
 			table[i] = 0x00;
 			tmp -= 8;
@@ -548,24 +541,24 @@ void delete_seq(uint index, uint length, uint8_t *table)
 	}
 }
 
-inline unsigned long round_up_div(unsigned long dividend,
+inline unsigned long div_up(unsigned long dividend,
 	unsigned long divisor)
 {
 	return (dividend + divisor - 1) / divisor;
 }
 
-int get_first_free_bit(uint8_t byte)
+int first_free_bits(uint8_t byte)
 {
 	return get_free_bit(0, byte);
 }
 
-int get_last_free_bit(uint8_t byte)
+int last_free_bits(uint8_t byte)
 {
 	int i;
-	uint8_t temp = 0xFF;
+	uint8_t tmp = 0xFF;
 
 	for (i = 8; i >= 0; --i) {
-		if ((byte & (temp >> i)) != 0x00)
+		if ((byte & (tmp >> i)) != 0x00)
 			return 7 - i;
 	}
 	return 8;
@@ -583,12 +576,12 @@ int popcount(uint8_t byte)
 /*
 enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod)
 {
-	unsigned int temp;
+	unsigned int tmp;
 	switch(mod){
 		case SEEK_CUR:
-			temp = file->offset + offset;
-			if(temp < file->size){
-				file->offset = temp;
+			tmp = file->offset + offset;
+			if(tmp < file->size){
+				file->offset = tmp;
 				return FS_OK;
 			}
 			return FS_PARAM_ERROR;
@@ -599,9 +592,9 @@ enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod)
 			}
 			return FS_PARAM_ERROR;
 		case SEEK_END:
-			temp = file->offset + offset;
-			if(temp < file->size && file->offset <= offset){
-				file->offset = temp;
+			tmp = file->offset + offset;
+			if(tmp < file->size && file->offset <= offset){
+				file->offset = tmp;
 				return FS_OK;
 			}
 			return FS_PARAM_ERROR;

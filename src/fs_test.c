@@ -14,11 +14,51 @@ extern int find_sequence(uint8_t *table, uint table_size, uint length);
 extern void write_seq(uint index, uint length, uint8_t *table);
 /* Lets the bits toggle */
 extern void delete_seq(uint index, uint length, uint8_t *table);
-extern int get_last_free_bit(uint8_t byte);
+extern int last_free_bits(uint8_t byte);
 /* Returns the following bits, starting from an index */
 extern int get_free_bit(uint8_t index, uint8_t byte);
 extern int popcount(uint8_t byte);
+extern int find_sequence_small(uint8_t *table, uint table_size, uint length);
 
+extern unsigned long div_up(unsigned long dividend,
+	unsigned long divisor);
+
+
+bool find_sequence_small_test(void)
+{
+
+	if (find_sequence_small(table1, 64, 10) != -1)
+		return false;
+	table1[0] = 0x87;
+	if (find_sequence_small(table1, 64, 4) != 1)
+		return false;
+	table1[1] = 0x08;
+	table1[2] = 0x0F;
+	if (find_sequence_small(table1, 64, 5) != 13)
+		return false;
+	if (find_sequence_small(table1, 64, 6) != 13)
+		return false;
+	table1[3] = 0x00;
+	table1[4] = 0x01;
+	if (find_sequence_small(table1, 64, 8) != 24)
+		return false;
+	if (find_sequence_small(table1, 64, 8) != 24)
+		return false;
+	if (find_sequence_small(table1, 64, 1) != 1)
+		return false;
+
+	if (find_sequence_small(table2, 256, 10) != -1)
+		return false;
+	table2[0] = 0x40;
+	table2[1] = 0x00;
+	table2[2] = 0x00;
+	table2[3] = 0x00;
+	table2[4] = 0x00;
+	if (find_sequence_small(table2, 256, 5) != 2)
+		return false;
+
+	return true;
+}
 
 bool popcount_test(void)
 {
@@ -40,78 +80,75 @@ bool popcount_test(void)
 	return true;
 }
 
-bool get_last_free_bit_test(void)
+bool last_free_bits_test(void)
 {
-	uint8_t temp;
+	uint8_t tmp;
 
-	temp = 0x00;
-	if (get_last_free_bit(temp) != 8)
+	tmp = 0x00;
+	if (last_free_bits(tmp) != 8)
 		return false;
-	temp = 0x80;
-	if (get_last_free_bit(temp) != 7)
+	tmp = 0x80;
+	if (last_free_bits(tmp) != 7)
 		return false;
-	temp = 0xC0;
-	if (get_last_free_bit(temp) != 6)
+	tmp = 0xC0;
+	if (last_free_bits(tmp) != 6)
 		return false;
-	temp = 0xE0;
-	if (get_last_free_bit(temp) != 5)
+	tmp = 0xE0;
+	if (last_free_bits(tmp) != 5)
 		return false;
-	temp = 0xF0;
-	if (get_last_free_bit(temp) != 4)
+	tmp = 0xF0;
+	if (last_free_bits(tmp) != 4)
 		return false;
-	temp = 0x08;
-	if (get_last_free_bit(temp) != 3)
+	tmp = 0x08;
+	if (last_free_bits(tmp) != 3)
 		return false;
-	temp = 0x8C;
-	if (get_last_free_bit(temp) != 2)
+	tmp = 0x8C;
+	if (last_free_bits(tmp) != 2)
 		return false;
-	temp = 0x1E;
-	if (get_last_free_bit(temp) != 1)
+	tmp = 0x1E;
+	if (last_free_bits(tmp) != 1)
 		return false;
-	temp = 0x2F;
-	if (get_last_free_bit(temp) != 0)
+	tmp = 0x2F;
+	if (last_free_bits(tmp) != 0)
 		return false;
 
 	return true;
 }
-
-
 
 bool get_free_bit_test(void)
 {
-	uint8_t temp;
+	uint8_t tmp;
 
-	temp =  0x00;
-	if (get_free_bit(0, temp) != 8)
+	tmp =  0x00;
+	if (get_free_bit(0, tmp) != 8)
 		return false;
-	if (get_free_bit(3, temp) != 5)
+	if (get_free_bit(3, tmp) != 5)
 		return false;
-	if (get_free_bit(8, temp) != -1)
-		return false;
-
-	temp = 0xFF;
-	if (get_free_bit(0, temp) != 0)
-		return false;
-	if (get_free_bit(10, temp) != -1)
-		return false;
-	if (get_free_bit(3, temp) != 0)
+	if (get_free_bit(8, tmp) != -1)
 		return false;
 
-	temp = 0x87;
-	if (get_free_bit(1, temp) != 4)
+	tmp = 0xFF;
+	if (get_free_bit(0, tmp) != 0)
 		return false;
-	if (get_free_bit(2, temp) != 3)
+	if (get_free_bit(10, tmp) != -1)
+		return false;
+	if (get_free_bit(3, tmp) != 0)
 		return false;
 
-	temp = 0xF0;
-	if (get_free_bit(3, temp) != 0)
+	tmp = 0x87;
+	if (get_free_bit(1, tmp) != 4)
 		return false;
-	if (get_free_bit(4, temp) != 4)
+	if (get_free_bit(2, tmp) != 3)
+		return false;
+
+	tmp = 0xF0;
+	if (get_free_bit(3, tmp) != 0)
+		return false;
+	if (get_free_bit(4, tmp) != 4)
 		return false;
 
 	return true;
 }
-
 
 bool find_bit_test(void)
 {
@@ -136,7 +173,6 @@ bool find_bit_test(void)
 /* TODO: More cases */
 bool find_sequence_test(void)
 {
-	uint i;
 
 	table1[10] = 0x78;
 	if (find_sequence(table1, 64, 1) != 80)
@@ -162,11 +198,9 @@ bool find_sequence_test(void)
 	if (find_sequence(table1, 64, 17) != -1)
 		return false;
 
-	for (i = 0; i < 256; ++i)
-		table2[i] = 0x00;
-	if (find_sequence(table1, 256, 256) != 0)
+	if (find_sequence(table2_empty, 256, 256) != 0)
 		return false;
-	if (find_sequence(table1, 256, 257) != -1)
+	if (find_sequence(table2_empty, 256, 50000) != -1)
 		return false;
 
 	return true;
@@ -254,68 +288,6 @@ bool delete_seq_test(void)
 	return true;
 }
 
-bool mkfs_test(void)
-{
-
-	return false;
-}
-
-void setUp(void)
-{
-	uint i;
-
-	/*Struct setup*/
-	disk1 = disk_fill("disks/disk1.disk", 1024, 64);
-	disk2 = disk_fill("disks/disk2.disk", 2048, 128);
-	disk3 = disk_fill("disks/disk3.disk", 4096, 256);
-	disk4 = disk_fill("disks/disk4.disk", 65536, 512);
-
-	/*File setup*/
-	disk_create(disk1, 1024);
-	disk_create(disk2, 2048);
-	disk_create(disk3, 4096);
-	disk_create(disk4, 65536);
-
-	/*Opens the file*/
-	disk_initialize(disk1);
-	disk_initialize(disk2);
-	disk_initialize(disk3);
-	disk_initialize(disk4);
-
-	/*Make disk structures*/
-	fs_mkfs(disk1);
-	fs_mkfs(disk2);
-	fs_mkfs(disk3);
-	fs_mkfs(disk4);
-
-	/* Allocation table */
-	table1 = malloc(64);
-	table1_empty = malloc(64);
-	table2 = malloc(256);
-	table2_empty = malloc(256);
-
-	for (i = 0; i < 64; ++i)
-		table1[i] = 0xFF;
-	for (i = 0; i < 64; ++i)
-		table1_empty[i] = 0x00;
-	for (i = 0; i < 256; ++i)
-		table2[i] = 0x00;
-	for (i = 0; i < 256; ++i)
-		table2[i] = 0xFF;
-}
-
-
-
-void tearDown(void)
-{
-	free(disk1);
-	free(disk2);
-	free(disk3);
-	free(disk4);
-	free(table1);
-	free(table2);
-}
-
 bool write_bit_test(void)
 {
 
@@ -353,12 +325,135 @@ bool write_bit_test(void)
 	return true;
 }
 
+bool mkfs_test(void)
+{
+	uint i, k, at_size, it_size, ib_size;
+	uint8_t *buffer;
+	struct FILE_SYSTEM *fs;
+	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
+
+
+	for (k = 0; k < 4; ++k) {
+
+		buffer = malloc(sizeof(uint8_t) * disks[k]->sector_size);
+		disk_initialize(disks[k]);
+		fs_mkfs(disks[k]);
+		at_size = div_up(disks[k]->sector_count,
+			disks[k]->sector_size);
+		ib_size = disks[k]->sector_count / 8;
+		if (ib_size < 8)
+			ib_size = 8;
+		it_size = div_up(ib_size, disks[k]->sector_size);
+
+		disk_read(disks[k], (char *) buffer, 0, 1);
+
+		fs = (struct FILE_SYSTEM *) buffer;
+		if (fs->sector_size != disks[k]->sector_size)
+			return false;
+		if (fs->alloc_table != 1)
+			return false;
+		if (fs->alloc_table_size != at_size)
+			return false;
+		if (fs->inode_alloc_table != (at_size + 1))
+			return false;
+		if (fs->inode_alloc_table_size != it_size)
+			return false;
+		if (fs->inode_block != (at_size + it_size + 1))
+			return false;
+		if (fs->inode_block_size != ib_size)
+			return false;
+		fs = NULL;
+
+		/*
+		disk_read(disks[k], (char *) buffer, 1, at_size);
+		for (i = 0; i < 2; ++i)
+			if (buffer[i] != 0x00)
+				return false;
+		for (i = 2; i < 64; ++i)
+			if (buffer[i] != 0xFF)
+				return false;
+
+		disk_read(disk1, (char *) buffer, 1, 1);
+		for (i = 0; i < 1; ++i)
+			if (buffer[i] != 0x00)
+				return false;
+		for (i = 1; i < 64; ++i)
+			if (buffer[i] != 0xFF)
+				return false; */
+
+		disk_shutdown(disks[k]);
+		free(buffer);
+	}
+	return true;
+}
+
+void setUp(void)
+{
+	uint i;
+
+	/*Struct setup*/
+	disk1 = disk_fill("disks/disk1.disk", 1024, 64);
+	disk2 = disk_fill("disks/disk2.disk", 2048, 128);
+	disk3 = disk_fill("disks/disk3.disk", 4096, 256);
+	disk4 = disk_fill("disks/disk4.disk", 65536, 512);
+
+	/*File setup*/
+	disk_create(disk1, 1024);
+	disk_create(disk2, 2048);
+	disk_create(disk3, 4096);
+	disk_create(disk4, 65536);
+
+	/*Opens the file*/
+	disk_initialize(disk1);
+	disk_initialize(disk2);
+	disk_initialize(disk3);
+	disk_initialize(disk4);
+
+	/*Make disk structures*/
+	fs_mkfs(disk1);
+	fs_mkfs(disk2);
+	fs_mkfs(disk3);
+	fs_mkfs(disk4);
+
+	/*Force the fs to write*/
+	disk_shutdown(disk1);
+	disk_shutdown(disk2);
+	disk_shutdown(disk3);
+	disk_shutdown(disk4);
+
+	/* Allocation table */
+	table1 = malloc(64);
+	table1_empty = malloc(64);
+	table2 = malloc(256);
+	table2_empty = malloc(256);
+
+	for (i = 0; i < 64; ++i)
+		table1[i] = 0xFF;
+	for (i = 0; i < 64; ++i)
+		table1_empty[i] = 0x00;
+	for (i = 0; i < 256; ++i)
+		table2_empty[i] = 0x00;
+	for (i = 0; i < 256; ++i)
+		table2[i] = 0xFF;
+}
+
+void tearDown(void)
+{
+	free(disk1);
+	free(disk2);
+	free(disk3);
+	free(disk4);
+	free(table1);
+	free(table2);
+	free(table1_empty);
+	free(table2_empty);
+}
 
 int main(void)
 {
 	uint i, length;
 
-	bool (*tests[9]) (void);
+	bool (*tests[10]) (void);
 	tests[0] = write_bit_test;
 	tests[1] = find_bit_test;
 	tests[2] = find_sequence_test;
@@ -366,14 +461,17 @@ int main(void)
 	tests[4] = mkfs_test;
 	tests[5] = delete_seq_test;
 	tests[6] = get_free_bit_test;
-	tests[7] = get_last_free_bit_test;
+	tests[7] = last_free_bits_test;
 	tests[8] = popcount_test;
+	tests[9] = find_sequence_small_test;
 
 	length = sizeof(tests) / sizeof(tests[0]);
 	for (i = 0; i < length; ++i) {
 		setUp();
 		if (!(*tests[i])())
 			printf("Error in Test %d\n", i);
+		else 
+			printf("Test %d succeeded\n", i);
 		tearDown();
 	}
 	return 0;
@@ -464,4 +562,4 @@ int main(void)
 	free(disk);
 	free(fs);
 	return 0;
-} */
+}*/
