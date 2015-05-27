@@ -16,6 +16,7 @@
 struct FILE_SYSTEM {
 	ushort id;
 	uint sector_size;
+	uint sector_count;
 	/* Pointer to the disk the fs is belonging to */
 	struct disk *disk;
 	/* Start of the allocation table */
@@ -34,6 +35,7 @@ struct INODE {
 	/* unique id in the file system */
 	uint id;
 	uint size;
+	uint check_size;
 	uint creation_date;
 	uint last_modified;
 	/* Offset into the file beginning from the start */
@@ -58,7 +60,9 @@ enum SEEK_MODE {
 enum FSRESULT {
 	FS_OK,
 	FS_ERROR,
-	FS_PARAM_ERROR
+	FS_PARAM_ERROR,
+	FS_FULL,
+	FS_CHECK_ERROR
 };
 
 
@@ -73,7 +77,7 @@ enum FSRESULT fs_close(struct FILE_SYSTEM *fs, struct INODE *file);
 enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file);
 /* Reads the file from disk */
 enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
-	char *buffer);
+	char *buffer, uint length);
 /* Writes the file to the disk */
 enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 	char *buffer);

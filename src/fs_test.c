@@ -327,7 +327,7 @@ bool write_bit_test(void)
 
 bool mkfs_test(void)
 {
-	uint i, k, at_size, it_size, ib_size;
+	uint k, at_size, it_size, ib_size;
 	uint8_t *buffer;
 	struct FILE_SYSTEM *fs;
 	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
@@ -350,6 +350,8 @@ bool mkfs_test(void)
 		fs = (struct FILE_SYSTEM *) buffer;
 		if (fs->sector_size != disks[k]->sector_size)
 			return false;
+		if (fs->sector_count != disks[k]->sector_count)
+			return false;
 		if (fs->alloc_table != 1)
 			return false;
 		if (fs->alloc_table_size != at_size)
@@ -364,20 +366,12 @@ bool mkfs_test(void)
 			return false;
 		fs = NULL;
 
-		/*
+		/* TODO:
 		disk_read(disks[k], (char *) buffer, 1, at_size);
-		for (i = 0; i < 2; ++i)
+		for (i = 0; i < (disks[k]->sector_count/8); ++i)
 			if (buffer[i] != 0x00)
 				return false;
-		for (i = 2; i < 64; ++i)
-			if (buffer[i] != 0xFF)
-				return false;
-
-		disk_read(disk1, (char *) buffer, 1, 1);
-		for (i = 0; i < 1; ++i)
-			if (buffer[i] != 0x00)
-				return false;
-		for (i = 1; i < 64; ++i)
+		for (i = 2; i < disks[k]->sector_size; ++i)
 			if (buffer[i] != 0xFF)
 				return false; */
 
@@ -470,7 +464,7 @@ int main(void)
 		setUp();
 		if (!(*tests[i])())
 			printf("Error in Test %d\n", i);
-		else 
+		else
 			printf("Test %d succeeded\n", i);
 		tearDown();
 	}

@@ -6,6 +6,8 @@ extern int last_free_bits(uint8_t byte);
 void print_fs(struct FILE_SYSTEM *fs)
 {
 	printf("-----------------------File System-----------------------\n");
+	printf("sector_size:%d\n", fs->sector_size);
+	printf("sector_count:%d\n", fs->sector_count);
 	printf("alloc_table:%d\n", fs->alloc_table);
 	printf("alloc_table_size:%d\n", fs->alloc_table_size);
 	printf("inode_Alloc_table:%d\n", fs->inode_alloc_table);
@@ -49,6 +51,7 @@ void print_inode(struct INODE *file)
 	printf("-----------------------Inode-----------------------\n");
 	printf("ID: %d\n", file->id);
 	printf("size: %d\n", file->size);
+	printf("check_size: %d\n", file->check_size);
 	printf("creation date: %d\n", file->creation_date);
 	printf("last modified: %d\n", file->last_modified);
 	printf("offset: %d\n", file->offset);
