@@ -88,8 +88,4 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs);
 /* Returns how many sectors are still free */
 unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs);
 
-/*enum FSRESULT fs_flush(); //Writes all cached data to the disk*/
-/*unsigned long fs_tell(struct INODE* file);*/
-/*enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod);*/
-
 #endif /* FILE_SYSTEM_H */

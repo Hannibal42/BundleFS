@@ -4,25 +4,103 @@
 struct disk *disk1, *disk2, *disk3, *disk4;
 struct FILE_SYSTEM fs1, fs2, fs3;
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
+uint8_t *data1, *data2, *data3;
 
-extern void write_bit(uint index, uint8_t *table, bool value);
+extern void write_bit(uint8_t *table, uint index, bool value);
 
-extern int find_bit(uint8_t *table, uint size);
+extern int find_bit(const uint8_t *table, uint size);
 
-extern int find_sequence(uint8_t *table, uint table_size, uint length);
+extern int find_sequence(const uint8_t *table, uint table_size, uint length);
 /* Writes a sequence of 1 */
-extern void write_seq(uint index, uint length, uint8_t *table);
+extern void write_seq(uint8_t *table, uint index, uint length);
 /* Lets the bits toggle */
-extern void delete_seq(uint index, uint length, uint8_t *table);
+extern void delete_seq(uint8_t *table, uint index, uint length);
 extern int last_free_bits(uint8_t byte);
 /* Returns the following bits, starting from an index */
 extern int get_free_bit(uint8_t index, uint8_t byte);
 extern int popcount(uint8_t byte);
-extern int find_sequence_small(uint8_t *table, uint table_size, uint length);
-
+extern int find_sequence_small(const uint8_t *table, uint table_size,
+	uint length);
+extern bool checksum_check(const uint8_t *buffer, const struct INODE *file,
+uint sector_size);
+extern void checksum(const uint8_t *buffer, uint lenght, uint8_t *result,
+	uint size);
 extern unsigned long div_up(unsigned long dividend,
 	unsigned long divisor);
 
+bool fs_mount_test(void)
+{
+	uint i, tmp;
+	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
+
+	for (i = 0; i < 4; ++i) {
+		disk_initialize(disks[i]);
+		fs_mount(disks[i], &fs1);
+
+		if (fs1.sector_size != disks[i]->sector_size)
+			return false;
+		if (fs1.sector_count != disks[i]->sector_count)
+			return false;
+		tmp = div_up(sizeof(struct FILE_SYSTEM), fs1.sector_size);
+		if (fs1.alloc_table != tmp)
+			return false;
+		tmp = div_up(fs1.sector_count, fs1.sector_size * 8);
+		if (fs1.alloc_table_size != tmp)
+			return false;
+		tmp += fs1.alloc_table;
+		if (fs1.inode_alloc_table != tmp)
+			return false;
+		tmp = fs1.sector_count / 8;
+		if (tmp < 8)
+			tmp = 8;
+		tmp = div_up(tmp, fs1.sector_size);
+		if (fs1.inode_alloc_table_size != tmp)
+			return false;
+		tmp += fs1.inode_alloc_table;
+		if (fs1.inode_block != tmp)
+			return false;
+		tmp = fs1.sector_count / 8;
+		if (tmp < 8)
+			tmp = 8;
+		if (fs1.inode_block_size != tmp)
+			return false;
+	}
+
+	return true;
+}
+
+
+bool checksum_check_test(void)
+{
+	uint i;
+	struct INODE file;
+	uint8_t *check, *tmp;
+
+	check = malloc(64);
+	tmp = malloc(192);
+
+	file.size = 128;
+	file.check_size = 64;
+	checksum(data1, 128, check, 64);
+
+	for (i = 0; i < 128; ++i)
+		tmp[i] = data1[i];
+
+	for (i = 0; i < 64; ++i)
+		tmp[i + 128] = check[i];
+
+	if (!checksum_check(tmp, &file, 64))
+		return false;
+
+	file.size = 64;
+	file.check_size = 16;
+	if (checksum_check(data1, &file, 16))
+		return false;
+
+	free(check);
+	free(tmp);
+	return true;
+}
 
 bool find_sequence_small_test(void)
 {
@@ -210,21 +288,21 @@ bool write_seq_test(void)
 {
 	uint i;
 
-	write_seq(0, 7, table1_empty);
+	write_seq(table1_empty, 0, 7);
 	if (table1_empty[0] != 0xFE)
 		return false;
 	for (i = 1; i < 64; ++i)
 		if (table1_empty[i] != 0x00)
 			return false;
 
-	write_seq(7, 1, table1_empty);
+	write_seq(table1_empty, 7, 1);
 	if (table1_empty[0] != 0xFF)
 		return false;
 	for (i = 1; i < 64; ++i)
 		if (table1_empty[i] != 0x00)
 			return false;
 
-	write_seq(8, 15, table1_empty);
+	write_seq(table1_empty, 8, 15);
 	if (table1_empty[1] != 0xFF)
 		return false;
 	if (table1_empty[2] != 0xFE)
@@ -233,7 +311,7 @@ bool write_seq_test(void)
 		if (table1_empty[i] != 0x00)
 			return false;
 
-	write_seq(25, 10, table1_empty);
+	write_seq(table1_empty, 25, 10);
 	if (table1_empty[0] != 0xFF)
 		return false;
 	if (table1_empty[1] != 0xFF)
@@ -255,21 +333,21 @@ bool delete_seq_test(void)
 {
 	uint i;
 
-	delete_seq(0, 4, table1);
+	delete_seq(table1, 0, 4);
 	if (table1[0] != 0x0F)
 		return false;
 	for (i = 1; i < 64; ++i)
 		if (table1[i] != 0xFF)
 			return false;
 
-	delete_seq(4, 3, table1);
+	delete_seq(table1, 4, 3);
 	if (table1[0] != 0x01)
 		return false;
 	for (i = 1; i < 64; ++i)
 		if (table1[i] != 0xFF)
 			return false;
 
-	delete_seq(7, 10, table1);
+	delete_seq(table1, 7, 10);
 	if (table1[0] != 0x00)
 		return false;
 	if (table1[1] != 0x00)
@@ -280,7 +358,7 @@ bool delete_seq_test(void)
 		if (table1[i] != 0xFF)
 			return false;
 
-	delete_seq(0, 512, table1);
+	delete_seq(table1, 0, 512);
 	for (i = 0; i < 64; ++i)
 		if (table1[i] != 0x00)
 			return false;
@@ -298,27 +376,27 @@ bool write_bit_test(void)
 	table1[3] = 0xFF;
 	table1[4] = 0xFF;
 
-	write_bit(0, table1, 0);
+	write_bit(table1, 0, 0);
 	if (table1[0] != 0x7F)
 		return false;
 
-	write_bit(0, table1, 1);
+	write_bit(table1, 0, 1);
 	if (table1[0] != 0xFF)
 		return false;
 
-	write_bit(8, table1, 1);
+	write_bit(table1, 8, 1);
 	if (table1[1] != 0xF8)
 		return false;
 
-	write_bit(8, table1, 0);
+	write_bit(table1, 8, 0);
 	if (table1[1] != 0x78)
 		return false;
 
-	write_bit(18, table1, 1);
+	write_bit(table1, 18, 1);
 	if (table1[2] != 0x20)
 		return false;
 
-	write_bit(39, table1, 0);
+	write_bit(table1, 39, 0);
 	if (table1[4] != 0xFE)
 		return false;
 
@@ -429,6 +507,18 @@ void setUp(void)
 		table2_empty[i] = 0x00;
 	for (i = 0; i < 256; ++i)
 		table2[i] = 0xFF;
+
+	/* Test Data */
+	data1 = malloc(128);
+	data2 = malloc(1024);
+	data3 = malloc(2048);
+
+	for (i = 0; i < 128; ++i)
+		data1[i] = 0x0F;
+	for (i = 0; i < 1024; ++i)
+		data2[i] = 0xD0;
+	for (i = 0; i < 2048; ++i)
+		data3[i] = 0xEE;
 }
 
 void tearDown(void)
@@ -441,13 +531,16 @@ void tearDown(void)
 	free(table2);
 	free(table1_empty);
 	free(table2_empty);
+	free(data1);
+	free(data2);
+	free(data3);
 }
 
 int main(void)
 {
 	uint i, length;
 
-	bool (*tests[10]) (void);
+	bool (*tests[12]) (void);
 	tests[0] = write_bit_test;
 	tests[1] = find_bit_test;
 	tests[2] = find_sequence_test;
@@ -458,6 +551,8 @@ int main(void)
 	tests[7] = last_free_bits_test;
 	tests[8] = popcount_test;
 	tests[9] = find_sequence_small_test;
+	tests[10] = checksum_check_test;
+	tests[11] = fs_mount_test;
 
 	length = sizeof(tests) / sizeof(tests[0]);
 	for (i = 0; i < length; ++i) {

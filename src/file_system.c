@@ -2,22 +2,23 @@
 
 
 /*Writes the given bit into the allocation table*/
-void write_bit(uint index, uint8_t *table, bool value);
+void write_bit(uint8_t *table, uint index, bool value);
 /* Finds the first free bit */
-int find_bit(uint8_t *table, uint length);
+int find_bit(const uint8_t *table, uint length);
 /* Finds the first free sequence of the given length */
-int find_sequence(uint8_t *table, uint table_size, uint length);
+int find_sequence(const uint8_t *table, uint table_size, uint length);
 /* Writes a sequence of 1 */
-void write_seq(uint index, uint length, uint8_t *table);
+void write_seq(uint8_t *table, uint index, uint length);
 /* Lets the bits toggle */
-void delete_seq(uint index, uint length, uint8_t *table);
+void delete_seq(uint8_t *table, uint index, uint length);
 int first_free_bits(uint8_t byte);
 int last_free_bits(uint8_t byte);
 int get_free_bit(uint8_t index, uint8_t byte);
 int popcount(uint8_t byte);
-void checksum(uint8_t *buffer, uint lenght, uint8_t *result, uint size);
-bool checksum_check(uint8_t *buffer, struct INODE *file, uint sector_size);
-int find_sequence_small(uint8_t *table, uint table_size, uint length);
+void checksum(const uint8_t *buffer, uint lenght, uint8_t *result, uint size);
+bool checksum_check(const uint8_t *buffer, const struct INODE *file,
+uint sector_size);
+int find_sequence_small(const uint8_t *table, uint table_size, uint length);
 inline unsigned long div_up(unsigned long dividend,
 	unsigned long divisor);
 
@@ -115,7 +116,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	struct INODE *file)
 {
-	unsigned int i;
+	uint i;
 	uint8_t *buffer;
 	struct INODE *tmp;
 
@@ -123,6 +124,7 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	disk_read(fs->disk, (char *) buffer, fs->inode_block,
 		fs->inode_block_size);
 
+	/* TODO: Memcpy */
 	for (i = 0; i < fs->inode_block_size; ++i) {
 		tmp = (struct INODE *) buffer;
 		buffer += fs->sector_size;
@@ -132,19 +134,12 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	/*Resets the pointer, so that free can be called*/
 	buffer -= fs->sector_size * (i + 1);
 
-
-	if (i >= fs->inode_block_size)
+	if (i >= fs->inode_block_size) {
+		free(buffer);
 		return FS_ERROR;
-	/* TODO: Copy the memory direct */
-	file->id = tmp->id;
-	file->size = tmp->size;
-	file->creation_date = tmp->creation_date;
-	file->inode_offset = tmp->inode_offset;
-	file->last_modified = tmp->last_modified;
-	file->offset = 0;
-	file->location = tmp->location;
-	file->custody = tmp->custody;
-	file->time_to_live = tmp->time_to_live;
+	}
+
+	memcpy(file, tmp, sizeof(struct INODE));
 
 	free(buffer);
 	buffer = NULL;
@@ -163,13 +158,13 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 		fs->alloc_table_size);
 	bit_length = div_up(file->size, fs->sector_size);
 	bit_length += div_up(file->check_size, fs->sector_size);
-	delete_seq(file->location, bit_length, alloc_table);
+	delete_seq(alloc_table, file->location, bit_length);
 
 	/*Free bit in inode_table*/
 	IN_table = malloc(fs->sector_size * fs->inode_alloc_table_size);
 	disk_read(fs->disk, (char *) IN_table, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
-	write_bit(file->inode_offset, IN_table, false);
+	write_bit(IN_table, file->inode_offset, false);
 
 	/* Delete Inode */
 	buffer = malloc(fs->sector_size);
@@ -191,12 +186,6 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	file->location = 0xFFFFFFFF;
 
 	return FS_OK;
-}
-
-bool checksum_check(uint8_t *buffer, struct INODE *file, uint sector_size)
-{
-	/* TODO Implement */
-	return false;
 }
 
 enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
@@ -221,6 +210,7 @@ enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
 	for (i = 0; i < length; ++i)
 		buffer[i] = tmp[i];
 
+	free(tmp);
 	return FS_OK;
 }
 
@@ -232,6 +222,7 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 
 	sector_count_file = div_up(file->size, fs->sector_size);
 	sector_count_check = div_up(file->check_size, fs->sector_size);
+
 	tmp = malloc(sector_count_check * fs->sector_size);
 	checksum((uint8_t *) buffer, file->size, tmp, file->check_size);
 	file->last_modified = (uint) time(NULL);
@@ -264,16 +255,7 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
 
 	disk_read(disk, buffer, 0, superblock_size);
 
-	struct FILE_SYSTEM *tmpFS = (struct FILE_SYSTEM *) buffer;
-
-	/*TODO: memcpy */
-	fs->alloc_table = tmpFS->alloc_table;
-	fs->alloc_table_size = tmpFS->alloc_table_size;
-	fs->inode_alloc_table = tmpFS->inode_alloc_table;
-	fs->inode_alloc_table_size = tmpFS->inode_alloc_table_size;
-	fs->inode_block = tmpFS->inode_block;
-	fs->inode_block_size = tmpFS->inode_block_size;
-	fs->sector_size = tmpFS->sector_size;
+	memcpy(fs, buffer, sizeof(struct FILE_SYSTEM));
 
 	free(buffer);
 	buffer = NULL;
@@ -283,15 +265,11 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
 
 unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs)
 {
-	unsigned long tmp, sector_count, byte_count;
+	unsigned long tmp, byte_count;
 	char *buffer;
-	unsigned int i;
+	uint i;
 
-	/*Get number of sectors*/
-	if (disk_ioctl(disk, GET_SECTOR_COUNT, &sector_count) != RES_OK)
-		return FS_ERROR;
-
-	byte_count = div_up(sector_count, 8);
+	byte_count = div_up(fs->sector_count, 8);
 
 	buffer = (char *) malloc(fs->alloc_table_size * fs->sector_size);
 	disk_read(disk, buffer, fs->alloc_table, fs->alloc_table_size);
@@ -336,8 +314,8 @@ unsigned long size, uint time_to_live, bool custody)
 		return FS_FULL;
 	}
 	/* Write the buffer */
-	write_seq(AL_off, bit_count, AL_table);
-	write_bit(IN_off, IN_table, true);
+	write_seq(AL_table, AL_off, bit_count);
+	write_bit(IN_table, IN_off, true);
 
 	file->size = size;
 	file->check_size = check_size;
@@ -372,7 +350,7 @@ unsigned long size, uint time_to_live, bool custody)
 
 
 /*Writes the given bit into the allocation table*/
-void write_bit(uint index, uint8_t *table, bool bit_value)
+void write_bit(uint8_t *table, uint index, bool bit_value)
 {
 	uint8_t tmp_byte;
 	uint byte_index;
@@ -391,7 +369,7 @@ void write_bit(uint index, uint8_t *table, bool bit_value)
 }
 
 /*Finds the next free bit in the allocation table*/
-int find_bit(uint8_t *table, uint size)
+int find_bit(const uint8_t *table, uint size)
 {
 	uint i, k;
 	uint8_t tmp_byte;
@@ -433,7 +411,7 @@ int find_sequence_byte(uint8_t byte, uint length)
 }
 
 /* lenght must be < 9 for this, and the table must be > 0*/
-int find_sequence_small(uint8_t *table, uint table_size, uint length)
+int find_sequence_small(const uint8_t *table, uint table_size, uint length)
 {
 	uint i;
 	int tmp;
@@ -460,8 +438,7 @@ int find_sequence_small(uint8_t *table, uint table_size, uint length)
 	return -1;
 }
 
-/* TODO: Rewrite this shameful function */
-int find_sequence(uint8_t *table, uint table_size, uint length)
+int find_sequence(const uint8_t *table, uint table_size, uint length)
 {
 	int tmp;
 	uint i, start;
@@ -504,7 +481,7 @@ int get_free_bit(uint8_t index, uint8_t byte)
 	return (i - index);
 }
 
-void write_seq(uint index, uint length, uint8_t *table)
+void write_seq(uint8_t *table, uint index, uint length)
 {
 	uint tmp, startpadding, i, start_byte, end_byte;
 	uint8_t tmp_byte;
@@ -536,7 +513,7 @@ void write_seq(uint index, uint length, uint8_t *table)
 	}
 }
 
-void delete_seq(uint index, uint length, uint8_t *table)
+void delete_seq(uint8_t *table, uint index, uint length)
 {
 	uint tmp, startpadding, i, start_byte, end_byte;
 	uint8_t tmp_byte;
@@ -601,7 +578,7 @@ int popcount(uint8_t byte)
 	& 0xf;
 }
 
-void checksum(uint8_t *buffer, uint length, uint8_t *result, uint size)
+void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
 {
 	uint i;
 	uint8_t *tmp;
@@ -620,38 +597,27 @@ void checksum(uint8_t *buffer, uint length, uint8_t *result, uint size)
 	free(tmp);
 }
 
-/*
-enum FSRESULT fs_seek(struct INODE* file,int offset, enum SEEK_MODE mod)
+bool checksum_check(const uint8_t *buffer, const struct INODE *file,
+	uint sector_size)
 {
-	unsigned int tmp;
-	switch(mod){
-		case SEEK_CUR:
-			tmp = file->offset + offset;
-			if(tmp < file->size){
-				file->offset = tmp;
-				return FS_OK;
-			}
-			return FS_PARAM_ERROR;
-		case SEEK_SET:
-			if(offset < file->size && offset >= 0){
-				file->offset=offset;
-				return FS_OK;
-			}
-			return FS_PARAM_ERROR;
-		case SEEK_END:
-			tmp = file->offset + offset;
-			if(tmp < file->size && file->offset <= offset){
-				file->offset = tmp;
-				return FS_OK;
-			}
-			return FS_PARAM_ERROR;
-		default:
-			return FS_PARAM_ERROR;
-	}
-}
+	uint i, sector_count_file, sector_count_check, fbc,
+	 cbc;
+	uint8_t *tmp;
 
-//TODO: Wie verhindere ich das irgendwer einfach in der Inode rumschreibt?
-unsigned long fs_tell(struct INODE* file)
-{
-	return (long) file->offset;
-}*/
+	sector_count_file = div_up(file->size, sector_size);
+	fbc = sector_count_file * sector_size;
+	sector_count_check = div_up(file->check_size, sector_size);
+	cbc = sector_count_check * sector_size;
+
+	tmp = malloc(cbc);
+	checksum(buffer, fbc, tmp, cbc);
+
+	for (i = fbc; i < fbc + cbc; ++i) {
+		if (buffer[i] != tmp[i - fbc]) {
+			free(tmp);
+			return false;
+		}
+	}
+
+	return true;
+}
