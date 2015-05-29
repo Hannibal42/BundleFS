@@ -21,6 +21,11 @@ uint sector_size);
 int find_sequence_small(const uint8_t *table, uint table_size, uint length);
 inline unsigned long div_up(unsigned long dividend,
 	unsigned long divisor);
+struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs);
+bool isNotValid(struct INODE *inode);
+bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
+	struct INODE *file, uint size);
+free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
@@ -182,7 +187,7 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	free(IN_table);
 	free(buffer);
 
-	/* TODO: Define a good error value */
+	/* TODO: Define a good error value, or free inode*/
 	file->location = 0xFFFFFFFF;
 
 	return FS_OK;
@@ -621,3 +626,135 @@ bool checksum_check(const uint8_t *buffer, const struct INODE *file,
 
 	return true;
 }
+
+bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size)
+{
+	struct INODE *inode;
+
+	inode = malloc(sizeof(struct INODE));
+
+	if(!find_first_IN_length(disk, fs, inode, size))
+		return false;
+
+	fs_delete(fs, inode);
+
+	/* TODO: Notify upcn that a Budnle was deleted */
+
+	free(inode);
+	return true;
+}
+
+/* TODO: FIX */
+int find_oldest_IN(struct disk *disk, struct FILE_SYSTEM *fs)
+{
+	uint i, k;
+	struct INODE *inodes;
+
+	inodes = load_inodes_all(disk, fs);
+
+	k = 0;
+	for (i = 0; i < fs->inode_block; ++i) {
+		if (!inodes[i].custody || isNotValid(&inodes[i]))
+			if (inodes[k].creation_date > inodes[i].creation_date)
+				k = i;
+	}
+	return -1;
+}
+
+/* Finds the first inode that can be deleted */
+bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs, struct INODE *file, uint size)
+{
+	uint i;
+	struct INODE *inodes;
+
+	inodes = load_inodes_all(disk, fs);
+
+	for (i = 0; i < fs->inode_block; ++i) {
+		if (inodes[i].size > size) {
+			if (!inodes[i].custody || isNotValid(&inodes[i])) {
+				memcpy(file, &inodes[i], sizeof(struct INODE));
+				free(inodes);
+				return true;
+			}
+		}
+	}
+	free(inodes);
+	return false;
+}
+
+/* Finds the first inode that can be deleted */
+int find_first_IN(struct disk *disk, struct FILE_SYSTEM *fs)
+{
+	uint i;
+	struct INODE *inodes;
+
+	inodes = load_inodes_all(disk, fs);
+
+	for (i = 0; i < fs->inode_block; ++i) {
+		if (inodes[i].size != 0) {
+			if (!inodes[i].custody || isNotValid(&inodes[i]))
+				return i;
+		}
+	}
+	return -1;
+}
+
+bool isNotValid(struct INODE *inode)
+{
+	uint t;
+
+	t = (uint) time(NULL);
+
+	return t > inode->time_to_live;
+}
+
+/* This needs a big buffer, TODO: Write more memory friednly */
+struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs)
+{
+	uint i, k;
+	uint8_t *tmp;
+	struct INODE *ret_val;
+
+	tmp = malloc(fs->inode_block_size * fs->sector_size);
+	ret_val = (struct INODE *) malloc(fs->inode_block_size);
+
+	disk_read(disk, (char *) tmp, fs->inode_block, fs->inode_block_size);
+
+	k = 0;
+	for (i = 0; i < fs->inode_block_size; ++i) {
+		memcpy(&ret_val[i], &tmp[k], sizeof(struct INODE));
+		k += fs->sector_size;
+	}
+
+	free(tmp);
+	return ret_val;
+}
+
+/*
+uint get_free_sectors_count(const uint8_t *table, uint table_size)
+{
+	unsigned long tmp;
+	uint i;
+
+	tmp = 0;
+	for (i = 0; i < table_size; ++i)
+		tmp += (8 - popcount((uint8_t) table[i]));
+
+	return tmp;
+}
+
+struct INODE *load_inodes(const uint8_t *table, uint table_size,
+	uint *ret_size, struct FILE_SYSTEM *fs)
+{
+	uint i, inode_count;
+	struct INODE *tmp;
+
+	inode_count = get_free_sectors_count(table,table_size);
+	tmp = malloc(inode_count);
+
+	for (i = 0; i < table_size; ++i) {
+
+	}
+
+	return NULL;
+} */
