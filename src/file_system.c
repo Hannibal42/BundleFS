@@ -1,31 +1,11 @@
 #include "../h/file_system.h"
 
-
-/*Writes the given bit into the allocation table*/
-void write_bit(uint8_t *table, uint index, bool value);
-/* Finds the first free bit */
-int find_bit(const uint8_t *table, uint length);
-/* Finds the first free sequence of the given length */
-int find_sequence(const uint8_t *table, uint table_size, uint length);
-/* Writes a sequence of 1 */
-void write_seq(uint8_t *table, uint index, uint length);
-/* Lets the bits toggle */
-void delete_seq(uint8_t *table, uint index, uint length);
-int first_free_bits(uint8_t byte);
-int last_free_bits(uint8_t byte);
-int get_free_bit(uint8_t index, uint8_t byte);
-int popcount(uint8_t byte);
-void checksum(const uint8_t *buffer, uint lenght, uint8_t *result, uint size);
-bool checksum_check(const uint8_t *buffer, const struct INODE *file,
-uint sector_size);
-int find_sequence_small(const uint8_t *table, uint table_size, uint length);
-inline unsigned long div_up(unsigned long dividend,
-	unsigned long divisor);
+bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
+void delete_inValid_Bundels(struct disk *disk, struct FILE_SYSTEM *fs);
 struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs);
 bool isNotValid(struct INODE *inode);
 bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
 	struct INODE *file, uint size);
-bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
@@ -318,7 +298,8 @@ unsigned long size, uint time_to_live, bool custody)
 		ret_val = FS_FULL;
 		goto END;
 	}
-	/* TODO: Check if this is the right execution order... */
+	/* TODO: Check if this is the right execution order... 
+		maybe I only want to delete if the new bundel has custody set*/
 	if (AL_off < 0) {
 		if (free_space(fs->disk, fs, size))
 			AL_off = find_sequence(AL_table, bytes_AL_table, bit_count);
@@ -362,280 +343,6 @@ unsigned long size, uint time_to_live, bool custody)
 	free(IN_table);
 	free(AL_table);
 	return ret_val;
-}
-
-
-/*Writes the given bit into the allocation table*/
-void write_bit(uint8_t *table, uint index, bool bit_value)
-{
-	uint8_t tmp_byte;
-	uint byte_index;
-	uint bit_index;
-
-	byte_index = index / 8;
-	bit_index = index % 8;
-	tmp_byte = 0x80 >> bit_index;
-
-	if (bit_value) {
-		table[byte_index] |= tmp_byte;
-	} else {
-		tmp_byte ^= 0xFF;
-		table[byte_index] &= tmp_byte;
-	}
-}
-
-/*Finds the next free bit in the allocation table*/
-int find_bit(const uint8_t *table, uint size)
-{
-	uint i, k;
-	uint8_t tmp_byte;
-
-	for (i = 0; i < size; ++i) {
-		if (table[i] != 0xFF)
-			break;
-	}
-
-	/*No free inodes*/
-	if (i >= size)
-		return -1;
-
-	for (k = 0; k < 8; ++k) {
-		tmp_byte = 0x80 >> k;
-		if ((table[i] & tmp_byte) == 0x00)
-			return (8 * i) + k;
-	}
-	return -1;/* This should never happen */
-}
-
-int find_sequence_byte(uint8_t byte, uint length)
-{
-	uint i, tmp;
-	uint8_t tmp_byte;
-
-	tmp = 0;
-	for (i = 0; i < 8; ++i) {
-		tmp_byte = 0x80 >> i;
-		if ((byte & tmp_byte) == 0x00)
-			tmp += 1;
-		else
-			tmp = 0;
-
-		if (tmp >= length)
-			return i - (tmp-1);
-	}
-	return -1;
-}
-
-/* lenght must be < 9 for this, and the table must be > 0*/
-int find_sequence_small(const uint8_t *table, uint table_size, uint length)
-{
-	uint i;
-	int tmp;
-
-	tmp = find_sequence_byte(table[0], length);
-	if (tmp > 0)
-		return tmp;
-	tmp = last_free_bits(table[0]);
-	for (i = 1; i < table_size; ++i) {
-		/* Small optimization */
-		if (table[i] == 0xFF) {
-			tmp = 0;
-			continue;
-		}
-
-		tmp += first_free_bits(table[i]);
-		if (tmp >= length)
-			return i * 8 - last_free_bits(table[i-1]);
-		tmp = find_sequence_byte(table[i], length);
-		if (tmp > 0)
-			return i * 8 + tmp;
-		tmp = last_free_bits(table[i]);
-	}
-	return -1;
-}
-
-int find_sequence(const uint8_t *table, uint table_size, uint length)
-{
-	int tmp;
-	uint i, start;
-
-	if (length < 9)
-		return find_sequence_small(table, table_size, length);
-
-	tmp = 0;
-	start = 0;
-	for (i = 0; i < table_size; ++i) {
-		if (table[i] == 0x00) {
-			tmp += 8;
-			if (tmp >= length)
-				return (start * 8) +
-				(8 - last_free_bits(table[start]));
-		} else {
-			tmp += first_free_bits(table[i]);
-			if (tmp >= length)
-				return (start * 8) +
-				(8 - last_free_bits(table[start]));
-			tmp = last_free_bits(table[i]);
-			start = i;
-		}
-	}
-	return -1;
-}
-
-int get_free_bit(uint8_t index, uint8_t byte)
-{
-	int i;
-	uint8_t tmp = 0x80;
-
-	if (index > 7)
-		return -1;
-
-	for (i = index; i < 8; ++i) {
-		if ((byte & (tmp >> i)) != 0x00)
-			return (i - index);
-	}
-	return (i - index);
-}
-
-void write_seq(uint8_t *table, uint index, uint length)
-{
-	uint tmp, startpadding, i, start_byte, end_byte;
-	uint8_t tmp_byte;
-
-	start_byte = index / 8;
-	tmp = length;
-	startpadding = 8 - (index % 8);
-	end_byte = start_byte + ((length + (index % 8)) / 8);
-
-	/* Start byte */
-	if (tmp > startpadding) {
-		tmp_byte = 0xFF >> (8 - startpadding);
-		tmp -= startpadding;
-	} else {
-		tmp_byte = 0xFF << (8 - tmp);
-		tmp_byte = tmp_byte >> (8 - startpadding);
-		tmp = 0;
-	}
-	table[start_byte] |= tmp_byte;
-
-	for (i = (start_byte + 1); i <= end_byte; ++i) {
-		if (i == end_byte) {
-			tmp_byte = 0xFF << (8 - tmp);
-			table[i] |= tmp_byte;
-		} else {
-			table[i] = 0xFF;
-			tmp -= 8;
-		}
-	}
-}
-
-void delete_seq(uint8_t *table, uint index, uint length)
-{
-	uint tmp, startpadding, i, start_byte, end_byte;
-	uint8_t tmp_byte;
-
-	start_byte = index / 8;
-	tmp = length;
-	startpadding = 8 - (index % 8);
-	end_byte = start_byte + ((length + (index % 8)) / 8);
-
-	/* Start byte */
-	if (tmp > startpadding) {
-		tmp_byte = 0xFF << startpadding;
-		tmp -= startpadding;
-	} else {
-		tmp_byte = 0xFF << startpadding;
-		tmp = 8 - (startpadding - tmp);
-		tmp_byte |= 0xFF >> tmp;
-		tmp = 0;
-	}
-	table[start_byte] &= tmp_byte;
-
-	for (i = (start_byte + 1); i <= end_byte; ++i) {
-		if (i == end_byte) {
-			tmp_byte = 0xFF >> tmp;
-			table[i] &= tmp_byte;
-		} else {
-			table[i] = 0x00;
-			tmp -= 8;
-		}
-	}
-}
-
-inline unsigned long div_up(unsigned long dividend,
-	unsigned long divisor)
-{
-	return (dividend + divisor - 1) / divisor;
-}
-
-int first_free_bits(uint8_t byte)
-{
-	return get_free_bit(0, byte);
-}
-
-int last_free_bits(uint8_t byte)
-{
-	int i;
-	uint8_t tmp = 0xFF;
-
-	for (i = 8; i >= 0; --i) {
-		if ((byte & (tmp >> i)) != 0x00)
-			return 7 - i;
-	}
-	return 8;
-}
-
-/*stolen from the internet, counts the 1 bits in a byte*/
-int popcount(uint8_t byte)
-{
-	return ((0x876543210 >>
-	(((0x4332322132212110 >> ((byte & 0xF) << 2)) & 0xF) << 2)) >>
-	((0x4332322132212110 >> (((byte & 0xF0) >> 2)) & 0xF) << 2))
-	& 0xf;
-}
-
-void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
-{
-	uint i;
-	uint8_t *tmp;
-
-	tmp = malloc(length);
-	memcpy(tmp, buffer, length);
-
-	while (length > size) {
-		for (i = 0; i < (length - 1); ++i)
-				tmp[i] = tmp[i * 2] ^ tmp[i * 2 + 1];
-		length /= 2;
-	}
-
-	memcpy(result, tmp, size);
-
-	free(tmp);
-}
-
-bool checksum_check(const uint8_t *buffer, const struct INODE *file,
-	uint sector_size)
-{
-	uint i, sector_count_file, sector_count_check, fbc,
-	 cbc;
-	uint8_t *tmp;
-
-	sector_count_file = div_up(file->size, sector_size);
-	fbc = sector_count_file * sector_size;
-	sector_count_check = div_up(file->check_size, sector_size);
-	cbc = sector_count_check * sector_size;
-
-	tmp = malloc(cbc);
-	checksum(buffer, fbc, tmp, cbc);
-
-	for (i = fbc; i < fbc + cbc; ++i) {
-		if (buffer[i] != tmp[i - fbc]) {
-			free(tmp);
-			return false;
-		}
-	}
-
-	return true;
 }
 
 bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size)
@@ -682,6 +389,28 @@ void delete_inValid_Bundels(struct disk *disk, struct FILE_SYSTEM *fs)
 	free(inodes);
 }
 
+/* This needs a big buffer, TODO: Write more memory friednly */
+struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs)
+{
+	uint i, k;
+	uint8_t *tmp;
+	struct INODE *ret_val;
+
+	tmp = malloc(fs->inode_block_size * fs->sector_size);
+	ret_val = (struct INODE *) malloc(fs->inode_block_size);
+
+	disk_read(disk, (char *) tmp, fs->inode_block, fs->inode_block_size);
+
+	k = 0;
+	for (i = 0; i < fs->inode_block_size; ++i) {
+		memcpy(&ret_val[i], &tmp[k], sizeof(struct INODE));
+		k += fs->sector_size;
+	}
+
+	free(tmp);
+	return ret_val;
+}
+
 /* Finds the first inode that can be deleted and returns that inode*/
 bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 {
@@ -711,54 +440,3 @@ bool isNotValid(struct INODE *inode)
 
 	return t > inode->time_to_live;
 }
-
-/* This needs a big buffer, TODO: Write more memory friednly */
-struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs)
-{
-	uint i, k;
-	uint8_t *tmp;
-	struct INODE *ret_val;
-
-	tmp = malloc(fs->inode_block_size * fs->sector_size);
-	ret_val = (struct INODE *) malloc(fs->inode_block_size);
-
-	disk_read(disk, (char *) tmp, fs->inode_block, fs->inode_block_size);
-
-	k = 0;
-	for (i = 0; i < fs->inode_block_size; ++i) {
-		memcpy(&ret_val[i], &tmp[k], sizeof(struct INODE));
-		k += fs->sector_size;
-	}
-
-	free(tmp);
-	return ret_val;
-}
-
-/*
-uint get_free_sectors_count(const uint8_t *table, uint table_size)
-{
-	unsigned long tmp;
-	uint i;
-
-	tmp = 0;
-	for (i = 0; i < table_size; ++i)
-		tmp += (8 - popcount((uint8_t) table[i]));
-
-	return tmp;
-}
-
-struct INODE *load_inodes(const uint8_t *table, uint table_size,
-	uint *ret_size, struct FILE_SYSTEM *fs)
-{
-	uint i, inode_count;
-	struct INODE *tmp;
-
-	inode_count = get_free_sectors_count(table,table_size);
-	tmp = malloc(inode_count);
-
-	for (i = 0; i < table_size; ++i) {
-
-	}
-
-	return NULL;
-} */
