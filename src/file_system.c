@@ -25,7 +25,7 @@ struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs);
 bool isNotValid(struct INODE *inode);
 bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
 	struct INODE *file, uint size);
-free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
+bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
@@ -290,9 +290,10 @@ unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs)
 enum FSRESULT fs_create(struct FILE_SYSTEM *fs, struct INODE *file,
 unsigned long size, uint time_to_live, bool custody)
 {
-	uint i, AL_off, IN_off, bit_count, bytes_IN_table,
-	bytes_AL_table, check_size;
-	uint8_t *IN_buf, *IN_table, *AL_table, *buffer;
+	uint AL_off, IN_off, bit_count, bytes_IN_table, bytes_AL_table,
+	check_size;
+	uint8_t *IN_table, *AL_table, *buffer;
+	enum FSRESULT ret_val;
 
 	/* TODO: Use the right calculation */
 	check_size = size / 8;
@@ -312,12 +313,22 @@ unsigned long size, uint time_to_live, bool custody)
 	/*Finds a sequence of bits that are empty in the allocation table*/
 	bytes_AL_table  = fs->alloc_table_size * fs->sector_size;
 	AL_off = find_sequence(AL_table, bytes_AL_table, bit_count);
-	if (AL_off < 0 || IN_off < 0) {
-		free(AL_table);
-		free(IN_table);
-		/* TODO: Call function to find free memory */
-		return FS_FULL;
+	if (IN_off < 0) {
+		/* Call the function to extend the inode block here */
+		ret_val = FS_FULL;
+		goto END;
 	}
+	/* TODO: Check if this is the right execution order... */
+	if (AL_off < 0) {
+		if (free_space(fs->disk, fs, size))
+			AL_off = find_sequence(AL_table, bytes_AL_table, bit_count);
+
+		if (AL_off < 0) {
+			ret_val = FS_FULL;
+			goto END;
+		}
+	}
+
 	/* Write the buffer */
 	write_seq(AL_table, AL_off, bit_count);
 	write_bit(IN_table, IN_off, true);
@@ -333,12 +344,8 @@ unsigned long size, uint time_to_live, bool custody)
 	file->time_to_live = time_to_live;
 	file->inode_offset = IN_off;
 
-	/* TODO: memcpy*/
-	IN_buf = (uint8_t *) file;
 	buffer = malloc(fs->sector_size);
-	for (i = 0; i < sizeof(struct INODE); ++i)
-		buffer[i] = IN_buf[i];
-	IN_buf = NULL;
+	memcpy(buffer, file, sizeof(struct INODE));
 
 	/* Write all to disk */
 	disk_write(fs->disk, (char *) IN_table, fs->inode_alloc_table,
@@ -346,11 +353,15 @@ unsigned long size, uint time_to_live, bool custody)
 	disk_write(fs->disk, (char *) AL_table, fs->alloc_table,
 		fs->alloc_table_size);
 	disk_write(fs->disk, (char *) buffer, fs->inode_block + IN_off, 1);
+
+
+	free(buffer);
+	ret_val = FS_OK;
+
+	END:
 	free(IN_table);
 	free(AL_table);
-	free(buffer);
-
-	return FS_OK;
+	return ret_val;
 }
 
 
@@ -636,6 +647,7 @@ bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size)
 	if(!find_first_IN_length(disk, fs, inode, size))
 		return false;
 
+	/* TODO: Maybe write a better delete for this case */
 	fs_delete(fs, inode);
 
 	/* TODO: Notify upcn that a Budnle was deleted */
@@ -644,24 +656,33 @@ bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size)
 	return true;
 }
 
-/* TODO: FIX */
-int find_oldest_IN(struct disk *disk, struct FILE_SYSTEM *fs)
+/* This should be a regular task executed by freeRTOS */
+void delete_inValid_Bundels(struct disk *disk, struct FILE_SYSTEM *fs)
 {
 	uint i, k;
 	struct INODE *inodes;
+	uint *tmp; 
 
+	tmp = malloc(2 *fs->inode_block_size);
 	inodes = load_inodes_all(disk, fs);
 
 	k = 0;
-	for (i = 0; i < fs->inode_block; ++i) {
-		if (!inodes[i].custody || isNotValid(&inodes[i]))
-			if (inodes[k].creation_date > inodes[i].creation_date)
-				k = i;
+	for (i = 0; i < fs->inode_block_size; ++i) {
+		if (inodes[i].size > 0 && isNotValid(&inodes[i])) {
+			tmp[k] = inodes[i].id;
+			tmp[k + 1] = inodes[i].inode_offset;
+			k += 2;
+			/* TODO: Maybe write a better delete for this case */
+			fs_delete(fs, &inodes[i]);
+		}
 	}
-	return -1;
+
+	/* TODO: Notify upcn which Bundles have expiered and where deleted. */
+	free(tmp);
+	free(inodes);
 }
 
-/* Finds the first inode that can be deleted */
+/* Finds the first inode that can be deleted and returns that inode*/
 bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 {
 	uint i;
@@ -682,27 +703,10 @@ bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs, struct INOD
 	return false;
 }
 
-/* Finds the first inode that can be deleted */
-int find_first_IN(struct disk *disk, struct FILE_SYSTEM *fs)
-{
-	uint i;
-	struct INODE *inodes;
-
-	inodes = load_inodes_all(disk, fs);
-
-	for (i = 0; i < fs->inode_block; ++i) {
-		if (inodes[i].size != 0) {
-			if (!inodes[i].custody || isNotValid(&inodes[i]))
-				return i;
-		}
-	}
-	return -1;
-}
-
 bool isNotValid(struct INODE *inode)
 {
 	uint t;
-
+	/* TODO: Is the TTL a date or just how long the bundle lives? */
 	t = (uint) time(NULL);
 
 	return t > inode->time_to_live;
