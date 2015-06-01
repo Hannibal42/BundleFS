@@ -1,4 +1,4 @@
-#include "../h/disk.h"
+#include "disk.h"
 
 struct disk *disk_fill(char *filename, uint size, uint sector_size)
 {

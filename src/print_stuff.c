@@ -1,4 +1,4 @@
-#include "../h/print_stuff.h"
+#include "print_stuff.h"
 
 extern int first_free_bits(uint8_t byte);
 extern int last_free_bits(uint8_t byte);

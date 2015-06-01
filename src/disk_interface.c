@@ -1,4 +1,4 @@
-#include "../h/disk_interface.h"
+#include "disk_interface.h"
 
 
 enum DISK_STATUS disk_status(const struct disk *disk)

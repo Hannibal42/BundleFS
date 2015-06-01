@@ -1,4 +1,4 @@
-#include "../h/file_system.h"
+#include "file_system.h"
 
 bool free_disk_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
 void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs);
@@ -398,7 +398,8 @@ void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs)
 	free(inodes);
 }
 
-/* This needs a big buffer, TODO: Write more memory friednly */
+/* This needs a big buffer, TODO: Write more memory friednly
+ TODO: Use an input buffer*/
 struct INODE *load_inodes_all(struct FILE_SYSTEM *fs)
 {
 	uint i, k;

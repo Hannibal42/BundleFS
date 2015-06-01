@@ -1,13 +1,16 @@
 .PHONY : all
 
-all: src/*.c
-	gcc src/*.c -Ih/ -o build/start
+SRC = src/*.c unity/src/*.c
+INC = -Iinclude/ -Iunity/include/
 
-debug: src/*.c
-	gcc src/*.c -Wall -Ih/ -ggdb -o build/start
+all: 
+	gcc $(SRC) $(INC) -o build/start
+
+debug: 
+	gcc $(SRC) -Wall $(INC) -ggdb -o build/start
 
 gdb:
-	gcc src/*.c -Wall -ggdb -Ih/ -o build/start
+	gcc $(SRC) -Wall -ggdb $(INC) -o build/start
 	gdb build/start
 
 clean: 

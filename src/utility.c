@@ -1,4 +1,4 @@
-#include "../h/utility.h"
+#include "utility.h"
 
 
 /*Writes the given bit into the allocation table*/
