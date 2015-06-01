@@ -1,8 +1,8 @@
 #include "../h/file_system.h"
 
-bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
-void delete_inValid_Bundels(struct disk *disk, struct FILE_SYSTEM *fs);
-struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs);
+bool free_disk_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
+void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs);
+struct INODE *load_inodes_all(struct FILE_SYSTEM *fs);
 bool isNotValid(struct INODE *inode);
 bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
 	struct INODE *file, uint size);
@@ -10,11 +10,10 @@ bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
 	/*Check if the drive is ready*/
-	unsigned int i;
+	uint i;
 	struct FILE_SYSTEM *fs;/*the file system to be created*/
-	unsigned long sector_count, sector_size, max_file_count;
-	unsigned long size, dif;
-	unsigned long superblock_size; /*Size of the superblock in sectors*/
+	unsigned long sector_count, sector_size, max_file_count, size,
+	dif, superblock_size;/*Size of the superblock in sectors*/
 	char *tmparray; /*Used to make the fs superblock*/
 
 	/*Gets the sector size*/
@@ -34,6 +33,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 		max_file_count = 8;
 
 	/*The number of sectors needed for the allocation table*/
+	/* TODO: Substract the superblock, and inode_block size*/
 	fs->alloc_table_size = div_up(sector_count, sector_size * 8);
 	fs->alloc_table = superblock_size; /*first comes the superblock*/
 	size = sector_size * fs->alloc_table_size;
@@ -109,7 +109,6 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	disk_read(fs->disk, (char *) buffer, fs->inode_block,
 		fs->inode_block_size);
 
-	/* TODO: Memcpy */
 	for (i = 0; i < fs->inode_block_size; ++i) {
 		tmp = (struct INODE *) buffer;
 		buffer += fs->sector_size;
@@ -120,6 +119,7 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	buffer -= fs->sector_size * (i + 1);
 
 	if (i >= fs->inode_block_size) {
+		buffer += fs->sector_size;
 		free(buffer);
 		return FS_ERROR;
 	}
@@ -168,7 +168,9 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	free(buffer);
 
 	/* TODO: Define a good error value, or free inode*/
-	file->location = 0xFFFFFFFF;
+	buffer = (uint8_t *) file;
+	for (i = 0; i < sizeof(struct INODE); ++i)
+		buffer[i] = 0xFF;
 
 	return FS_OK;
 }
@@ -220,8 +222,14 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 
 enum FSRESULT fs_close(struct FILE_SYSTEM *fs, struct INODE *file)
 {
-	disk_write(fs->disk, (char *) file, fs->inode_block +
+	uint8_t *tmp;
+
+	tmp = malloc(fs->sector_size);
+	memcpy(tmp, file, sizeof(struct INODE));
+
+	disk_write(fs->disk, (char *) tmp, fs->inode_block +
 	file->inode_offset, 1);
+	free(tmp);
 	file = NULL;
 	return FS_OK;
 }
@@ -241,6 +249,7 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
 	disk_read(disk, buffer, 0, superblock_size);
 
 	memcpy(fs, buffer, sizeof(struct FILE_SYSTEM));
+	fs->disk = disk; /*TODO: Remove this in the working system */
 
 	free(buffer);
 	buffer = NULL;
@@ -248,7 +257,7 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
 	return FS_OK;
 }
 
-unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs)
+unsigned long fs_getfree(struct FILE_SYSTEM *fs)
 {
 	unsigned long tmp, byte_count;
 	char *buffer;
@@ -257,7 +266,7 @@ unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs)
 	byte_count = div_up(fs->sector_count, 8);
 
 	buffer = (char *) malloc(fs->alloc_table_size * fs->sector_size);
-	disk_read(disk, buffer, fs->alloc_table, fs->alloc_table_size);
+	disk_read(fs->disk, buffer, fs->alloc_table, fs->alloc_table_size);
 
 	tmp = 0;
 	for (i = 0; i < byte_count; ++i)
@@ -298,11 +307,12 @@ unsigned long size, uint time_to_live, bool custody)
 		ret_val = FS_FULL;
 		goto END;
 	}
-	/* TODO: Check if this is the right execution order... 
+	/* TODO: Check if this is the right execution order...
 		maybe I only want to delete if the new bundel has custody set*/
 	if (AL_off < 0) {
-		if (free_space(fs->disk, fs, size))
-			AL_off = find_sequence(AL_table, bytes_AL_table, bit_count);
+		if (free_disk_space(fs->disk, fs, size))
+			AL_off = find_sequence(AL_table, bytes_AL_table,
+				bit_count);
 
 		if (AL_off < 0) {
 			ret_val = FS_FULL;
@@ -318,7 +328,6 @@ unsigned long size, uint time_to_live, bool custody)
 	file->check_size = check_size;
 	file->creation_date = (uint) time(NULL);
 	file->last_modified = (uint) time(NULL);
-	file->offset = 0;
 	file->location = fs->sector_count - AL_off -
 		div_up(size, fs->sector_size);
 	file->custody = custody;
@@ -339,19 +348,19 @@ unsigned long size, uint time_to_live, bool custody)
 	free(buffer);
 	ret_val = FS_OK;
 
-	END:
+END:
 	free(IN_table);
 	free(AL_table);
 	return ret_val;
 }
 
-bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size)
+bool free_disk_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size)
 {
 	struct INODE *inode;
 
 	inode = malloc(sizeof(struct INODE));
 
-	if(!find_first_IN_length(disk, fs, inode, size))
+	if (!find_first_IN_length(disk, fs, inode, size))
 		return false;
 
 	/* TODO: Maybe write a better delete for this case */
@@ -364,14 +373,14 @@ bool free_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size)
 }
 
 /* This should be a regular task executed by freeRTOS */
-void delete_inValid_Bundels(struct disk *disk, struct FILE_SYSTEM *fs)
+void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs)
 {
 	uint i, k;
 	struct INODE *inodes;
-	uint *tmp; 
+	uint *tmp;
 
-	tmp = malloc(2 *fs->inode_block_size);
-	inodes = load_inodes_all(disk, fs);
+	tmp = malloc(2 * fs->inode_block_size);
+	inodes = load_inodes_all(fs);
 
 	k = 0;
 	for (i = 0; i < fs->inode_block_size; ++i) {
@@ -390,16 +399,17 @@ void delete_inValid_Bundels(struct disk *disk, struct FILE_SYSTEM *fs)
 }
 
 /* This needs a big buffer, TODO: Write more memory friednly */
-struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs)
+struct INODE *load_inodes_all(struct FILE_SYSTEM *fs)
 {
 	uint i, k;
 	uint8_t *tmp;
 	struct INODE *ret_val;
 
 	tmp = malloc(fs->inode_block_size * fs->sector_size);
-	ret_val = (struct INODE *) malloc(fs->inode_block_size);
+	ret_val = malloc(fs->inode_block_size * sizeof(struct INODE));
 
-	disk_read(disk, (char *) tmp, fs->inode_block, fs->inode_block_size);
+	disk_read(fs->disk, (char *) tmp, fs->inode_block,
+		fs->inode_block_size);
 
 	k = 0;
 	for (i = 0; i < fs->inode_block_size; ++i) {
@@ -412,12 +422,13 @@ struct INODE *load_inodes_all(struct disk *disk, struct FILE_SYSTEM *fs)
 }
 
 /* Finds the first inode that can be deleted and returns that inode*/
-bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs, struct INODE *file, uint size)
+bool find_first_IN_length(struct disk *disk,
+	struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 {
 	uint i;
 	struct INODE *inodes;
 
-	inodes = load_inodes_all(disk, fs);
+	inodes = load_inodes_all(fs);
 
 	for (i = 0; i < fs->inode_block; ++i) {
 		if (inodes[i].size > size) {

@@ -31,8 +31,6 @@ struct INODE {
 	uint check_size;
 	uint creation_date;
 	uint last_modified;
-	/* Offset into the file beginning from the start */
-	uint offset; /* TODO: Maybe remove */
 	/* Pointer to the start sector of the file */
 	uint location;
 	uint inode_offset;

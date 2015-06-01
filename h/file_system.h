@@ -9,7 +9,6 @@
 #include "metadata.h"
 #include "utility.h"
 
-
 /* Standart start point for the fs */
 #define FS_START 0 /* TODO: Remove? */
 
@@ -49,6 +48,6 @@ enum FSRESULT fs_mkfs(struct disk *disk);
 /* Reads the fs from  */
 enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs);
 /* Returns how many sectors are still free */
-unsigned long fs_getfree(struct disk *disk, struct FILE_SYSTEM *fs);
+unsigned long fs_getfree(struct FILE_SYSTEM *fs);
 
 #endif /* FILE_SYSTEM_H */

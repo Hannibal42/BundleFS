@@ -21,6 +21,7 @@ void print_disk(struct disk *disk)
 	printf("-----------------------Disk-----------------------\n");
 	printf("number:%c\n", disk->number);
 	printf("size:%lu\n", disk->size);
+	printf("File_name: %s\n", disk->file_name);
 	printf("sector_size:%d\n", disk->sector_size);
 	printf("sector_count:%d\n", disk->sector_count);
 	switch (disk->status) {
@@ -54,7 +55,6 @@ void print_inode(struct INODE *file)
 	printf("check_size: %d\n", file->check_size);
 	printf("creation date: %d\n", file->creation_date);
 	printf("last modified: %d\n", file->last_modified);
-	printf("offset: %d\n", file->offset);
 	printf("location: %d\n", file->location);
 	printf("inode offset: %d\n", file->inode_offset);
 	printf("custody: %hu\n", file->custody);
