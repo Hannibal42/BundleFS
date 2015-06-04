@@ -23,7 +23,7 @@ struct disk {
 };
 
 /*Fills the struct with the right parameters*/
-struct disk *disk_fill(char *filename, uint size, uint sector_size);
+void disk_fill(struct disk *disk, char *filename, uint size, uint sector_size);
 /*Creates the file for the disk*/
 void disk_create(struct disk *disk, uint size);
 

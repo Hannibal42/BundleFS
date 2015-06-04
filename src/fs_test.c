@@ -9,7 +9,7 @@ uint8_t *data1, *data2, *data3;
 extern bool free_disk_space(struct disk *disk, struct FILE_SYSTEM *fs,
 	uint size);
 extern void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs);
-extern struct INODE *load_inodes_all(struct FILE_SYSTEM *fs);
+extern void load_inodes_all(struct FILE_SYSTEM *fs, struct INODE *buffer);
 extern bool isNotValid(struct INODE *inode);
 extern bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
 	struct INODE *file, uint size);
@@ -20,11 +20,15 @@ TEST_SETUP(fs_tests)
 {
 	uint i;
 
+	disk1 = malloc(sizeof(struct disk));
+	disk2 = malloc(sizeof(struct disk));
+	disk3 = malloc(sizeof(struct disk));
+	disk4 = malloc(sizeof(struct disk));
 	/*Struct setup*/
-	disk1 = disk_fill("disks/disk1.disk", 1024, 64);
-	disk2 = disk_fill("disks/disk2.disk", 2048, 128);
-	disk3 = disk_fill("disks/disk3.disk", 4096, 256);
-	disk4 = disk_fill("disks/disk4.disk", 65536, 512);
+	disk_fill(disk1, "disks/disk1.disk", 1024, 64);
+	disk_fill(disk2, "disks/disk2.disk", 2048, 128);
+	disk_fill(disk3, "disks/disk3.disk", 4096, 256);
+	disk_fill(disk4, "disks/disk4.disk", 65536, 512);
 
 	/*File setup*/
 	disk_create(disk1, 1024);
@@ -130,6 +134,10 @@ TEST_TEAR_DOWN(fs_tests)
 	disk_shutdown(disk2);
 	disk_shutdown(disk3);
 	disk_shutdown(disk4);
+	free(disk1);
+	free(disk2);
+	free(disk3);
+	free(disk4);
 	free(table1);
 	free(table2);
 	free(table1_empty);
@@ -244,10 +252,12 @@ TEST(fs_tests, load_inodes_all_test)
 	fs_close(&fs1, &in3);
 
 	free(tmp);
-	tmp = load_inodes_all(&fs1);
+	tmp = malloc(fs1.inode_block_size * sizeof(struct INODE));
+	load_inodes_all(&fs1, tmp);
 
 	for (i = 0; i < 3; ++i)
 		TEST_ASSERT_EQUAL_UINT(tmp[i].id, inodes[i].id);
+	free(tmp);
 }
 
 TEST(fs_tests, fs_close_test)

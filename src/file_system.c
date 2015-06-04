@@ -2,7 +2,7 @@
 
 bool free_disk_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
 void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs);
-struct INODE *load_inodes_all(struct FILE_SYSTEM *fs);
+void load_inodes_all(struct FILE_SYSTEM *fs, struct INODE *buffer);
 bool isNotValid(struct INODE *inode);
 bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
 	struct INODE *file, uint size);
@@ -41,8 +41,6 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	dif = div_up(sector_count, 8) % sector_size;
 	dif = (fs->alloc_table_size - 1) * sector_size + dif;
 	if (sector_count % 8 != 0)
-		/*TODO:This should never happen if you used the right
-		numbers for the fs */
 		dif = dif - 1;
 	tmparray = malloc(sizeof(char) * size);
 	for (i = 0; i < size; ++i) {
@@ -64,7 +62,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 
 	dif = div_up(max_file_count, 8) % sector_size;
 	dif = (fs->inode_alloc_table_size - 1) * sector_size + dif;
-	if (sector_count % 8 != 0) /*TODO: This should never happen. */
+	if (sector_count % 8 != 0)
 		dif = dif - 1;
 	tmparray = malloc(sizeof(char) * size);
 	for (i = 0; i < size; ++i) {
@@ -90,8 +88,11 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	disk_write(disk, tmparray, fs->inode_block, fs->inode_block_size);
 	free(tmparray);
 	/*Make superblock*/
-	disk_write(disk, (char *) fs, 0, superblock_size);
-	/*TODO: Make a padding, so no random memory is writen to disk*/
+	tmparray = malloc(fs->sector_size * superblock_size);
+	memcpy(tmparray, fs, sizeof(struct FILE_SYSTEM));
+	disk_write(disk, tmparray, 0, superblock_size);
+
+	free(tmparray);
 	free(fs);
 	fs = NULL;
 	return FS_OK;
@@ -380,7 +381,8 @@ void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs)
 	uint *tmp;
 
 	tmp = malloc(2 * fs->inode_block_size);
-	inodes = load_inodes_all(fs);
+	inodes = malloc(fs->inode_block_size * sizeof(struct INODE));
+	load_inodes_all(fs, inodes);
 
 	k = 0;
 	for (i = 0; i < fs->inode_block_size; ++i) {
@@ -398,28 +400,24 @@ void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs)
 	free(inodes);
 }
 
-/* This needs a big buffer, TODO: Write more memory friednly
- TODO: Use an input buffer*/
-struct INODE *load_inodes_all(struct FILE_SYSTEM *fs)
+/* This needs a big buffer, TODO: Write more memory friednly*/
+void load_inodes_all(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
 	uint i, k;
 	uint8_t *tmp;
-	struct INODE *ret_val;
 
 	tmp = malloc(fs->inode_block_size * fs->sector_size);
-	ret_val = malloc(fs->inode_block_size * sizeof(struct INODE));
 
 	disk_read(fs->disk, (char *) tmp, fs->inode_block,
 		fs->inode_block_size);
 
 	k = 0;
 	for (i = 0; i < fs->inode_block_size; ++i) {
-		memcpy(&ret_val[i], &tmp[k], sizeof(struct INODE));
+		memcpy(&buffer[i], &tmp[k], sizeof(struct INODE));
 		k += fs->sector_size;
 	}
 
 	free(tmp);
-	return ret_val;
 }
 
 /* Finds the first inode that can be deleted and returns that inode*/
@@ -429,7 +427,8 @@ bool find_first_IN_length(struct disk *disk,
 	uint i;
 	struct INODE *inodes;
 
-	inodes = load_inodes_all(fs);
+	inodes = malloc(fs->inode_block_size * sizeof(struct INODE));
+	load_inodes_all(fs, inodes);
 
 	for (i = 0; i < fs->inode_block; ++i) {
 		if (inodes[i].size > size) {

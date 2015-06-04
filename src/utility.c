@@ -238,7 +238,7 @@ void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
 	tmp = malloc(length);
 	memcpy(tmp, buffer, length);
 
-	while (length > size) {
+	while (length > (size + 1)) {
 		for (i = 0; i < (length - 1); ++i)
 				tmp[i] = tmp[i * 2] ^ tmp[i * 2 + 1];
 		length /= 2;
@@ -271,6 +271,7 @@ bool checksum_check(const uint8_t *buffer, const struct INODE *file,
 		}
 	}
 
+	free(tmp);
 	return true;
 }
 
