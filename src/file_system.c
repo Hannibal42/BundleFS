@@ -10,7 +10,7 @@ bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
 	/*Check if the drive is ready*/
-	uint i;
+	uint i, tmp;
 	struct FILE_SYSTEM *fs;/*the file system to be created*/
 	unsigned long sector_count, sector_size, max_file_count, size,
 	dif, superblock_size;/*Size of the superblock in sectors*/
@@ -33,13 +33,12 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 		max_file_count = 8;
 
 	/*The number of sectors needed for the allocation table*/
-	/* TODO: Substract the superblock, and inode_block size*/
 	fs->alloc_table_size = div_up(sector_count, sector_size * 8);
 	fs->alloc_table = superblock_size; /*first comes the superblock*/
 	size = sector_size * fs->alloc_table_size;
 	/*Calculates the padding of the sector*/
 	dif = div_up(sector_count, 8) % sector_size;
-	dif = (fs->alloc_table_size - 1) * sector_size + dif;
+	dif += (fs->alloc_table_size - 1) * sector_size;
 	if (sector_count % 8 != 0)
 		dif = dif - 1;
 	tmparray = malloc(sizeof(char) * size);
@@ -61,7 +60,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	size = sector_size * fs->inode_alloc_table_size;
 
 	dif = div_up(max_file_count, 8) % sector_size;
-	dif = (fs->inode_alloc_table_size - 1) * sector_size + dif;
+	dif += (fs->inode_alloc_table_size - 1) * sector_size;
 	if (sector_count % 8 != 0)
 		dif = dif - 1;
 	tmparray = malloc(sizeof(char) * size);
@@ -91,6 +90,17 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	tmparray = malloc(fs->sector_size * superblock_size);
 	memcpy(tmparray, fs, sizeof(struct FILE_SYSTEM));
 	disk_write(disk, tmparray, 0, superblock_size);
+	free(tmparray);
+
+
+	/* Update alloc_table padding */
+	tmparray = malloc(fs->alloc_table_size * fs->sector_size);
+	disk_read(disk, tmparray, fs->alloc_table, fs->alloc_table_size);
+	tmp = sector_count;
+	tmp -= (fs->inode_block + fs->inode_block_size);
+	write_seq((uint8_t *)tmparray, tmp, fs->inode_block +
+		fs->inode_block_size);
+	disk_write(disk, tmparray, fs->alloc_table, fs->alloc_table_size);
 
 	free(tmparray);
 	free(fs);
@@ -420,6 +430,25 @@ void load_inodes_all(struct FILE_SYSTEM *fs, struct INODE *buffer)
 	free(tmp);
 }
 
+/* This needs to be called with a buffer that can hold all inodes! */
+void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer)
+{
+	uint i;
+	uint8_t *tmp;
+	struct INODE *tmp_in;
+
+	tmp = malloc(fs->sector_size);
+
+	for (i = 0; i < fs->inode_block_size; ++i) {
+		disk_read(fs->disk, (char *) tmp, fs->inode_block + i, 1);
+		tmp_in = (struct INODE *) tmp;
+		if (tmp_in->creation_date != 0)
+			memcpy(&buffer[i], tmp, sizeof(struct INODE));
+	}
+
+	free(tmp);
+}
+
 /* Finds the first inode that can be deleted and returns that inode*/
 bool find_first_IN_length(struct disk *disk,
 	struct FILE_SYSTEM *fs, struct INODE *file, uint size)
@@ -451,3 +480,151 @@ bool isNotValid(struct INODE *inode)
 
 	return t > inode->time_to_live;
 }
+
+uint inodes_used(struct FILE_SYSTEM *fs)
+{
+	uint8_t *tmp;
+	uint i, size, ret_val;
+
+	tmp = malloc(fs->inode_alloc_table_size);
+
+	ret_val = 0;
+	size = fs->sector_size * fs->inode_alloc_table_size;
+	disk_read(fs->disk, (char *) tmp, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
+	for (i = 0; i < size; ++i) {
+		ret_val += 8 - popcount(tmp[i]);
+	}
+
+	free(tmp);
+	ret_val = fs->inode_block_size - ret_val;
+	return ret_val;
+}
+
+void swap(struct INODE **a, struct INODE **b)
+{
+	struct INODE *tmp;
+
+	tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
+void quick_sort_inodes(struct INODE *begin, struct INODE *end) {
+	struct INODE *tmp, *split;
+
+	if (end - begin <= 1)
+		return;
+
+	tmp = begin + 1;
+	split = begin + 1;
+	while (++tmp <= end) {
+		if (tmp->location < begin->location) {
+			swap(&tmp, &split);
+			++split;
+		}
+	}
+	split -= 1;
+	swap(&begin, &split);
+	quick_sort_inodes(begin, split);
+	quick_sort_inodes(split + 1, end);
+}
+
+void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
+{
+	uint8_t *tmp;
+
+	tmp = malloc(fs->sector_size);
+	memcpy(tmp, file, sizeof(struct INODE));
+
+	disk_write(fs->disk, (char *) tmp, fs->inode_block +
+		file->inode_offset, 1);
+	free(tmp);
+}
+
+void defragment(struct FILE_SYSTEM *fs)
+{
+	struct INODE *inodes;
+	uint8_t *buffer, *al_tab;
+	uint inode_count, k, i, sec_cnt, tmp, al_tab_sec, old_loc;
+
+	inode_count = inodes_used(fs);
+	inodes = malloc(inode_count * sizeof(struct INODE));
+	load_inodes_all_full(fs, inodes);
+
+	al_tab_sec = fs->alloc_table_size * fs->sector_size;
+	al_tab = malloc(al_tab_sec);
+	disk_read(fs->disk, (char *) al_tab, fs->alloc_table,
+		fs->alloc_table_size);
+
+
+	quick_sort_inodes(inodes, &inodes[inode_count - 1]);
+
+	k = 0;
+	for (i = 0; i < inode_count; ++i) {
+		sec_cnt = div_up(inodes[i].size, fs->sector_size);
+		if (inodes[i].location == k) {
+			k += sec_cnt;
+			continue;
+		}
+
+		buffer = malloc(sec_cnt * fs->sector_size);
+		disk_read(fs->disk, (char *) buffer, inodes[i].location, sec_cnt);
+
+		tmp = find_sequence(al_tab, al_tab_sec, sec_cnt);
+
+		if (tmp < 0) {
+			k += sec_cnt;
+			free(buffer);
+			continue;
+		}
+
+		disk_write(fs->disk, (char *) buffer, tmp, sec_cnt);
+		write_seq(al_tab, tmp, sec_cnt);
+		disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
+			fs->alloc_table_size);
+		old_loc = inodes[i].location;
+		inodes[i].location = tmp;
+		write_inode(fs, &inodes[i]);
+
+		delete_seq(al_tab, old_loc, sec_cnt);
+		write_seq(al_tab, k, sec_cnt);
+
+		disk_write(fs->disk, (char *) buffer, k, sec_cnt);
+		disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
+			fs->alloc_table_size);
+		inodes[i].location = k;
+		write_inode(fs, &inodes[i]);
+		k += sec_cnt;
+		free(buffer);
+	}
+	free(inodes);
+	free(al_tab);
+}
+
+/*
+bool resize_inode_block(struct FILE_SYSTEM *fs, int size)
+{
+	uint8_t *tmp;
+	int i, in_max;
+
+	tmp = malloc(fs->inode_alloc_table_size);
+	disk_read(fs->disk, (char *) tmp, fs->inode_alloc_table,
+		fs->inode_block_size);
+
+	in_max = fs->inode_block_size;
+	if (size > 0) {
+
+
+	} else {
+		*//* TODO: Change this when you
+		change the inode packing*/ /*
+		size += in_max;
+		for (i = in_max; i < in_max; ++i) {
+			tmp[i] = 
+		}
+	}
+
+	free(tmp);
+	return true;
+} */

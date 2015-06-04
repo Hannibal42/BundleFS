@@ -25,7 +25,7 @@ TEST_SETUP(fs_tests)
 	disk3 = malloc(sizeof(struct disk));
 	disk4 = malloc(sizeof(struct disk));
 	/*Struct setup*/
-	disk_fill(disk1, "disks/disk1.disk", 1024, 64);
+	disk_fill(disk1, "disks/disk1.disk", 4096, 64);
 	disk_fill(disk2, "disks/disk2.disk", 2048, 128);
 	disk_fill(disk3, "disks/disk3.disk", 4096, 256);
 	disk_fill(disk4, "disks/disk4.disk", 65536, 512);
@@ -217,14 +217,16 @@ TEST(fs_tests, fs_delete_test)
 
 TEST(fs_tests, fs_getfree_test)
 {
-	uint i;
+	uint i, tmp;
 	struct FILE_SYSTEM fs[3] = {fs1, fs2, fs3};
 	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
 
 	for (i = 0; i < 3; ++i) {
 		fs_mount(disks[i], &fs[i]);
+		tmp = fs[i].sector_count;
+		tmp -= fs[i].inode_block + fs[i].inode_block_size;
 		TEST_ASSERT_EQUAL_UINT(fs_getfree(&fs[i]),
-			fs[i].sector_count * fs[i].sector_size);
+			tmp * fs[i].sector_size);
 	}
 }
 
