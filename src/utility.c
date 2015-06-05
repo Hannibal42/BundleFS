@@ -275,6 +275,22 @@ bool checksum_check(const uint8_t *buffer, const struct INODE *file,
 	return true;
 }
 
+int cmp_INODES(const void *a, const void *b)
+{
+	struct INODE *tmp_a, *tmp_b;
+	int ret_val;
+
+	tmp_a = (struct INODE *) a;
+	tmp_b = (struct INODE *) b;
+	ret_val = ((int)tmp_a->location - (int) tmp_b->location);
+	return ret_val;
+}
+
+void quicksort_inodes(struct INODE *inodes, int nitems)
+{
+	qsort(inodes, nitems, sizeof(struct INODE), cmp_INODES);
+}
+
 /*
 uint get_free_sectors_count(const uint8_t *table, uint table_size)
 {

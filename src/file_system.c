@@ -501,35 +501,6 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 	return ret_val;
 }
 
-void swap(struct INODE **a, struct INODE **b)
-{
-	struct INODE *tmp;
-
-	tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
-void quick_sort_inodes(struct INODE *begin, struct INODE *end) {
-	struct INODE *tmp, *split;
-
-	if (end - begin <= 1)
-		return;
-
-	tmp = begin + 1;
-	split = begin + 1;
-	while (++tmp <= end) {
-		if (tmp->location < begin->location) {
-			swap(&tmp, &split);
-			++split;
-		}
-	}
-	split -= 1;
-	swap(&begin, &split);
-	quick_sort_inodes(begin, split);
-	quick_sort_inodes(split + 1, end);
-}
-
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 {
 	uint8_t *tmp;
@@ -557,8 +528,7 @@ void defragment(struct FILE_SYSTEM *fs)
 	disk_read(fs->disk, (char *) al_tab, fs->alloc_table,
 		fs->alloc_table_size);
 
-
-	quick_sort_inodes(inodes, &inodes[inode_count - 1]);
+	quicksort_inodes(inodes, inode_count);
 
 	k = 0;
 	for (i = 0; i < inode_count; ++i) {

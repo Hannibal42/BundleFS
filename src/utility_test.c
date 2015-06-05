@@ -289,6 +289,36 @@ TEST(utility_tests, write_bit_test)
 	TEST_ASSERT_EQUAL_HEX8(table1[4], 0xFE);
 }
 
+TEST(utility_tests, quick_sort_inodes_test)
+{
+	uint i;
+	struct INODE a, b, c, d, e, f, g, h;
+
+	a.location = 20;
+	b.location = 20;
+	c.location = 21;
+	d.location = 300;
+	e.location = 570;
+	f.location = 3245;
+	g.location = 324567;
+	h.location = 334567856;
+
+	struct INODE solution[8] = {a, b, c, d, e, f, g, h};
+	struct INODE inodes1[8] = {h, g, d, a, b, e, c, f};
+	struct INODE inodes2[8] = {c, d, e, f, a, g, h, b};
+
+	quicksort_inodes(inodes1, 8);
+	quicksort_inodes(inodes2, 8);
+
+	for (i = 0; i < 8; ++i)
+		TEST_ASSERT_EQUAL_UINT(solution[i].location,
+		inodes1[i].location);
+
+	for (i = 0; i < 8; ++i)
+		TEST_ASSERT_EQUAL_UINT(solution[i].location,
+		inodes2[i].location);
+}
+
 TEST_GROUP_RUNNER(utility_tests)
 {
 	RUN_TEST_CASE(utility_tests, write_bit_test);
@@ -301,4 +331,5 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, popcount_test);
 	RUN_TEST_CASE(utility_tests, find_sequence_small_test);
 	RUN_TEST_CASE(utility_tests, checksum_check_test);
+	RUN_TEST_CASE(utility_tests, quick_sort_inodes_test);
 }

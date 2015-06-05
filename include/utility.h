@@ -28,5 +28,6 @@ uint sector_size);
 int find_sequence_small(const uint8_t *table, uint table_size, uint length);
 inline unsigned long div_up(unsigned long dividend,
 	unsigned long divisor);
+void quicksort_inodes(struct INODE *inodes, int nitems);
 
 #endif /* UTILITY_H */
