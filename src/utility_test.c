@@ -3,6 +3,8 @@
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
 uint8_t *data1, *data2, *data3;
 
+extern int find_sequence_byte(uint8_t byte, uint length);
+
 TEST_GROUP(utility_tests);
 
 TEST_SETUP(utility_tests)
@@ -100,6 +102,9 @@ TEST(utility_tests, find_sequence_small_test)
 	table2[3] = 0x00;
 	table2[4] = 0x00;
 	TEST_ASSERT_EQUAL_INT(find_sequence_small(table2, 256, 5), 2);
+
+	table2[0] = 0x07;
+	TEST_ASSERT_EQUAL_INT(find_sequence_small(table2, 1, 5), 0);
 }
 
 TEST(utility_tests, popcount_test)
@@ -319,6 +324,13 @@ TEST(utility_tests, quick_sort_inodes_test)
 		inodes2[i].location);
 }
 
+TEST(utility_tests, find_sequence_byte_test)
+{
+	TEST_ASSERT_EQUAL(0, find_sequence_byte(0x03, 6));
+	TEST_ASSERT_EQUAL(1, find_sequence_byte(0x80, 6));
+	TEST_ASSERT_EQUAL(0, find_sequence_byte(0x07, 5));
+}
+
 TEST_GROUP_RUNNER(utility_tests)
 {
 	RUN_TEST_CASE(utility_tests, write_bit_test);
@@ -332,4 +344,5 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, find_sequence_small_test);
 	RUN_TEST_CASE(utility_tests, checksum_check_test);
 	RUN_TEST_CASE(utility_tests, quick_sort_inodes_test);
+	RUN_TEST_CASE(utility_tests, find_sequence_byte_test);
 }

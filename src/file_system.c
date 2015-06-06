@@ -4,8 +4,8 @@ bool free_disk_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size);
 void delete_invalid_inodes(struct disk *disk, struct FILE_SYSTEM *fs);
 void load_inodes_all(struct FILE_SYSTEM *fs, struct INODE *buffer);
 bool isNotValid(struct INODE *inode);
-bool find_first_IN_length(struct disk *disk, struct FILE_SYSTEM *fs,
-	struct INODE *file, uint size);
+bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size);
+uint inodes_used(struct FILE_SYSTEM *fs);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
@@ -290,8 +290,8 @@ unsigned long fs_getfree(struct FILE_SYSTEM *fs)
 enum FSRESULT fs_create(struct FILE_SYSTEM *fs, struct INODE *file,
 unsigned long size, uint time_to_live, bool custody)
 {
-	uint AL_off, IN_off, bit_count, bytes_IN_table, bytes_AL_table,
-	check_size;
+	int AL_off, IN_off;
+	uint bit_count, bytes_IN_table, bytes_AL_table, check_size;
 	uint8_t *IN_table, *AL_table, *buffer;
 	enum FSRESULT ret_val;
 
@@ -371,7 +371,7 @@ bool free_disk_space(struct disk *disk, struct FILE_SYSTEM *fs, uint size)
 
 	inode = malloc(sizeof(struct INODE));
 
-	if (!find_first_IN_length(disk, fs, inode, size))
+	if (!find_first_IN_length(fs, inode, size))
 		return false;
 
 	/* TODO: Maybe write a better delete for this case */
@@ -450,17 +450,17 @@ void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer)
 }
 
 /* Finds the first inode that can be deleted and returns that inode*/
-bool find_first_IN_length(struct disk *disk,
-	struct FILE_SYSTEM *fs, struct INODE *file, uint size)
+bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 {
-	uint i;
+	uint i, tmp;
 	struct INODE *inodes;
 
-	inodes = malloc(fs->inode_block_size * sizeof(struct INODE));
-	load_inodes_all(fs, inodes);
+	tmp = inodes_used(fs);
+	inodes = malloc(tmp * sizeof(struct INODE));
+	load_inodes_all_full(fs, inodes);
 
-	for (i = 0; i < fs->inode_block; ++i) {
-		if (inodes[i].size > size) {
+	for (i = 0; i < tmp; ++i) {
+		if (inodes[i].size >= size) {
 			if (!inodes[i].custody || isNotValid(&inodes[i])) {
 				memcpy(file, &inodes[i], sizeof(struct INODE));
 				free(inodes);
@@ -486,7 +486,7 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 	uint8_t *tmp;
 	uint i, size, ret_val;
 
-	tmp = malloc(fs->inode_alloc_table_size);
+	tmp = malloc(fs->inode_alloc_table_size * fs->sector_size);
 
 	ret_val = 0;
 	size = fs->sector_size * fs->inode_alloc_table_size;
@@ -520,7 +520,7 @@ void defragment(struct FILE_SYSTEM *fs)
 	uint inode_count, k, i, sec_cnt, tmp, al_tab_sec, old_loc;
 
 	inode_count = inodes_used(fs);
-	inodes = malloc(inode_count * sizeof(struct INODE));
+	inodes = malloc(inodes_used(fs) * sizeof(struct INODE));
 	load_inodes_all_full(fs, inodes);
 
 	al_tab_sec = fs->alloc_table_size * fs->sector_size;

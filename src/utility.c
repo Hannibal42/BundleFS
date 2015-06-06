@@ -69,7 +69,7 @@ int find_sequence_small(const uint8_t *table, uint table_size, uint length)
 	int tmp;
 
 	tmp = find_sequence_byte(table[0], length);
-	if (tmp > 0)
+	if (tmp >= 0)
 		return tmp;
 	tmp = last_free_bits(table[0]);
 	for (i = 1; i < table_size; ++i) {
