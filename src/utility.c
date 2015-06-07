@@ -264,8 +264,8 @@ bool checksum_check(const uint8_t *buffer, const struct INODE *file,
 	tmp = malloc(cbc);
 	checksum(buffer, fbc, tmp, cbc);
 
-	for (i = fbc; i < fbc + cbc; ++i) {
-		if (buffer[i] != tmp[i - fbc]) {
+	for (i = 0; i < file->check_size; ++i) {
+		if (buffer[i + fbc] != tmp[i]) {
 			free(tmp);
 			return false;
 		}

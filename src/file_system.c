@@ -218,17 +218,17 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 	char *buffer)
 {
 	uint sector_count_file, sector_count_check;
-	uint8_t *tmp;
+	uint8_t *che_buf;
 
 	sector_count_file = div_up(file->size, fs->sector_size);
 	sector_count_check = div_up(file->check_size, fs->sector_size);
 
-	tmp = malloc(sector_count_check * fs->sector_size);
-	checksum((uint8_t *) buffer, file->size, tmp, file->check_size);
+	che_buf = malloc(sector_count_check * fs->sector_size);
+	checksum((uint8_t *) buffer, file->size, che_buf, file->check_size);
 	file->last_modified = (uint) time(NULL);
 
 	disk_write(fs->disk, buffer, file->location, sector_count_file);
-	disk_write(fs->disk, (char *) tmp, file->location +
+	disk_write(fs->disk, (char *) che_buf, file->location +
 		sector_count_file, sector_count_check);
 	return FS_OK;
 }
@@ -371,7 +371,7 @@ bool free_disk_space(struct FILE_SYSTEM *fs, uint size)
 
 	if (!find_first_IN_length(fs, inode, size))
 		return false;
-
+	/* TODO: Delete more than one inode if needed */
 	/* TODO: Maybe write a better delete for this case */
 	fs_delete(fs, inode);
 

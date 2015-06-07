@@ -1,7 +1,5 @@
 #include "fs_test.h"
 
-#include "print_stuff.h"
-
 struct disk *disk1, *disk2, *disk3, *disk4;
 struct FILE_SYSTEM fs1, fs2, fs3;
 struct INODE in1, in2, in3, in4;
@@ -210,8 +208,7 @@ TEST(fs_tests, fs_create_test)
 	tmp = fs_getfree(&fs2) - fs2.sector_size;
 	res = fs_create(&fs2, &inodes[0], tmp, 100, false);
 	TEST_ASSERT_EQUAL(FS_OK, res);
-	/* TODO: Memfail */
-	//res = fs_create(&fs2, &inodes[0], tmp, 100, true);
+	res = fs_create(&fs2, &inodes[0], tmp, 100, true);
 	TEST_ASSERT_EQUAL(FS_OK, res);
 
 	free(al_tab);
@@ -251,7 +248,6 @@ TEST(fs_tests, fs_write_test)
 	buffer2 = malloc(100);
 
 	fs_mount(disk1, &fs1);
-
 	fs_create(&fs1, tmp, 100, 10, true);
 
 	for (i = 0; i < 100; ++i)
@@ -260,6 +256,26 @@ TEST(fs_tests, fs_write_test)
 	ret_val = fs_write(&fs1, tmp, (char *) buffer);
 	TEST_ASSERT_EQUAL(FS_OK, ret_val);
 	disk_read(disk1, (char *) buffer2, tmp->location, 2);
+
+	for (i = 0; i < 100; ++i)
+		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[i]);
+
+	free(buffer2);
+	free(buffer);
+
+	fs_create(&fs1, tmp, 1024, 100, false);
+	buffer = malloc(1024);
+	buffer2 = malloc(1024);
+
+	for (i = 0; i < 1024; ++i) {
+		if (i < 530)
+			buffer[i] = 0xEA;
+		else
+			buffer[i] = 0x03;
+	}
+	ret_val = fs_write(&fs1, tmp, (char *) buffer);
+	TEST_ASSERT_EQUAL(FS_OK, ret_val);
+	disk_read(disk1, (char *) buffer2, tmp->location, 16);
 
 	for (i = 0; i < 100; ++i)
 		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[i]);
@@ -281,21 +297,39 @@ TEST(fs_tests, fs_read_test)
 	buffer2 = malloc(100);
 
 	fs_mount(disk1, &fs1);
-
 	fs_create(&fs1, tmp, 100, 10, true);
 
 	for (i = 0; i < 100; ++i)
 		buffer[i] = 0xFA;
-
 	ret_val = fs_write(&fs1, tmp, (char *) buffer);
 	TEST_ASSERT_EQUAL(FS_OK, ret_val);
 	ret_val = fs_read(&fs1, tmp, (char *) buffer2, tmp->size);
 	TEST_ASSERT_EQUAL(FS_OK, ret_val);
-
 	for (i = 0; i < 100; ++i)
 		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[i]);
+	free(buffer2);
+	free(buffer);
 
-	TEST_ASSERT_TRUE(false);
+	fs_create(&fs1, tmp, 1000, 10, false);
+	buffer = malloc(1000);
+	buffer2 = malloc(1000);
+
+	for (i = 0; i < 1000; ++i)
+		buffer[i] = 0xF0;
+	ret_val = fs_write(&fs1, tmp, (char *) buffer);
+	TEST_ASSERT_EQUAL(FS_OK, ret_val);
+	ret_val = fs_read(&fs1, tmp, (char *) buffer2, tmp->size);
+	TEST_ASSERT_EQUAL(FS_OK, ret_val);
+	for (i = 0; i < 1000; ++i)
+		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[i]);
+	ret_val = fs_read(&fs1, tmp, (char *) buffer2, 1001);
+
+	TEST_ASSERT_EQUAL(FS_PARAM_ERROR, ret_val);
+	buffer[0] = 0xFF;
+	disk_write(disk1, (char *) buffer, tmp->location + 16, 1);
+	ret_val = fs_read(&fs1, tmp, (char *) buffer2, tmp->size);
+	TEST_ASSERT_EQUAL(FS_CHECK_ERROR, ret_val);
+
 	free(buffer2);
 	free(buffer);
 	free(tmp);
@@ -334,9 +368,9 @@ TEST(fs_tests, fs_delete_test)
 	tmp = malloc(sizeof(struct INODE));
 
 	fs_mount(disk1, &fs1);
-	fs_close(&fs1, &in1);
-	fs_close(&fs1, &in2);
-	fs_close(&fs1, &in3);
+	write_inode(&fs1, &in1);
+	write_inode(&fs1, &in2);
+	write_inode(&fs1, &in3);
 
 	fs_delete(&fs1, &in1);
 	TEST_ASSERT_EQUAL(fs_open(&fs1, in1.id, tmp), FS_ERROR);
@@ -495,14 +529,15 @@ TEST(fs_tests, fs_mount_test)
 
 TEST(fs_tests, fs_mkfs_test)
 {
-	uint k, at_size, it_size, ib_size;
+	int i;
+	uint k, at_size, it_size, ib_size, tmp;
 	uint8_t *buffer;
 	struct FILE_SYSTEM *fs;
 	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
 
 	for (k = 0; k < 4; ++k) {
 
-		buffer = malloc(sizeof(uint8_t) * disks[k]->sector_size);
+		buffer = malloc(disks[k]->sector_size);
 		disk_initialize(disks[k]);
 		fs_mkfs(disks[k]);
 		at_size = div_up(disks[k]->sector_count,
@@ -525,17 +560,20 @@ TEST(fs_tests, fs_mkfs_test)
 		TEST_ASSERT_EQUAL_UINT(fs->inode_block,
 			(at_size + it_size + 1));
 		TEST_ASSERT_EQUAL_UINT(fs->inode_block_size, ib_size);
-		fs = NULL;
 
-		/* TODO:
 		disk_read(disks[k], (char *) buffer, 1, at_size);
-		for (i = 0; i < (disks[k]->sector_count/8); ++i)
-			if (buffer[i] != 0x00)
-				return false;
-		for (i = 2; i < disks[k]->sector_size; ++i)
-			if (buffer[i] != 0xFF)
-				return false; */
+		tmp = disks[k]->sector_count;
+		tmp -= (1 + at_size + it_size + ib_size);
+		tmp /= 8;
+		for (i = 0; i < tmp; ++i)
+			TEST_ASSERT_EQUAL(buffer[i], 0x00);
 
+		disk_read(disks[k], (char *) buffer, 2, it_size);
+		tmp = ib_size / 8;
+		for (i = 0; i < tmp; ++i)
+			TEST_ASSERT_EQUAL(buffer[i], 0x00);
+
+		fs = NULL;
 		disk_shutdown(disks[k]);
 		free(buffer);
 	}
