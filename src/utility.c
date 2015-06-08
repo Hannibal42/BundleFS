@@ -230,6 +230,13 @@ int popcount(uint8_t byte)
 	& 0xf;
 }
 
+/* TODO: Change this function for upcn*/
+uint checksum_size(uint size)
+{
+	return size / 8;
+}
+
+/* TODO: Change this function for upcn*/
 void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
 {
 	uint i;

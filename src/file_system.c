@@ -4,7 +4,8 @@ bool free_disk_space(struct FILE_SYSTEM *fs, uint size);
 void delete_invalid_inodes(struct FILE_SYSTEM *fs);
 void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer);
 bool isNotValid(struct INODE *inode);
-bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size);
+bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file,
+	uint size);
 uint inodes_used(struct FILE_SYSTEM *fs);
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 
@@ -113,33 +114,26 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	struct INODE *file)
 {
-	uint i;
-	uint8_t *buffer;
-	struct INODE *tmp;
+	uint i, ino_cnt;
+	struct INODE *inodes;
 
-	buffer = malloc(fs->sector_size * fs->inode_block_size);
-	disk_read(fs->disk, (char *) buffer, fs->inode_block,
-		fs->inode_block_size);
+	ino_cnt = inodes_used(fs);
+	inodes = malloc(ino_cnt * sizeof(struct INODE));
+	load_inodes_all_full(fs, inodes);
 
-	for (i = 0; i < fs->inode_block_size; ++i) {
-		tmp = (struct INODE *) buffer;
-		buffer += fs->sector_size;
-		if (tmp->id == number)
+	for (i = 0; i < ino_cnt; ++i) {
+		if (inodes[i].id == number)
 			break;
 	}
-	/*Resets the pointer, so that free can be called*/
-	buffer -= fs->sector_size * (i + 1);
 
-	if (i >= fs->inode_block_size) {
-		buffer += fs->sector_size;
-		free(buffer);
+	if (i >= ino_cnt) {
+		free(inodes);
 		return FS_ERROR;
 	}
 
-	memcpy(file, tmp, sizeof(struct INODE));
+	memcpy(file, &inodes[i], sizeof(struct INODE));
 
-	free(buffer);
-	buffer = NULL;
+	free(inodes);
 	return FS_OK;
 }
 
@@ -179,11 +173,6 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	free(alloc_table);
 	free(IN_table);
 	free(buffer);
-
-	/* TODO: Define a good error value, or free inode*/
-	buffer = (uint8_t *) file;
-	for (i = 0; i < sizeof(struct INODE); ++i)
-		buffer[i] = 0xFF;
 
 	return FS_OK;
 }
@@ -297,8 +286,7 @@ unsigned long size, uint time_to_live, bool custody)
 	uint8_t *IN_table, *AL_table;
 	enum FSRESULT ret_val;
 
-	/* TODO: Use the right calculation */
-	check_size = size / 8;
+	check_size = checksum_size(size);
 	bit_count = div_up(size, fs->sector_size);
 	bit_count += div_up(check_size, fs->sector_size);
 	AL_table  = malloc(fs->alloc_table_size * fs->sector_size);
@@ -324,7 +312,6 @@ unsigned long size, uint time_to_live, bool custody)
 		maybe I only want to delete if the new bundel has custody set*/
 	if (AL_off < 0) {
 		if (free_disk_space(fs, size))
-			/*TODO: make the al_tab a parameter of free_disk_space*/
 			disk_read(fs->disk, (char *) AL_table, fs->alloc_table,
 				fs->alloc_table_size);
 			AL_off = find_sequence(AL_table, bytes_AL_table,
@@ -399,12 +386,11 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 			tmp[k] = inodes[i].id;
 			tmp[k + 1] = inodes[i].inode_offset;
 			k += 2;
-			/* TODO: Maybe write a better delete for this case */
 			fs_delete(fs, &inodes[i]);
 		}
 	}
 
-	/* TODO: Notify upcn which Bundles have expiered and where deleted. */
+	/* TODO: Notify upcn which Bundles have expiered */
 	free(tmp);
 	free(inodes);
 }
@@ -474,9 +460,8 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 	size = fs->sector_size * fs->inode_alloc_table_size;
 	disk_read(fs->disk, (char *) tmp, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
-	for (i = 0; i < size; ++i) {
+	for (i = 0; i < size; ++i)
 		ret_val += 8 - popcount(tmp[i]);
-	}
 
 	free(tmp);
 	ret_val = fs->inode_block_size - ret_val;
@@ -521,7 +506,8 @@ void defragment(struct FILE_SYSTEM *fs)
 		}
 
 		buffer = malloc(sec_cnt * fs->sector_size);
-		disk_read(fs->disk, (char *) buffer, inodes[i].location, sec_cnt);
+		disk_read(fs->disk, (char *) buffer, inodes[i].location,
+			sec_cnt);
 
 		tmp = find_sequence(al_tab, al_tab_sec, sec_cnt);
 
@@ -573,7 +559,7 @@ bool resize_inode_block(struct FILE_SYSTEM *fs, int size)
 		change the inode packing*/ /*
 		size += in_max;
 		for (i = in_max; i < in_max; ++i) {
-			tmp[i] = 
+			tmp[i] =
 		}
 	}
 

@@ -61,6 +61,8 @@ enum DRESULT disk_write(struct disk *disk, char *buff, uint sector,
 
 	fseek(disk->file, sector * disk->sector_size, SEEK_SET);
 	fwrite(buff, sizeof(char), number_of_bytes, disk->file);
+	/* Writes the cache to disk */
+	fflush(disk->file);
 
 	return RES_OK;
 }

@@ -187,7 +187,6 @@ TEST(utility_tests, find_bit_test)
 	TEST_ASSERT_EQUAL_INT(find_bit(table2, 256), 76);
 }
 
-/* TODO: More cases */
 TEST(utility_tests, find_sequence_test)
 {
 
@@ -209,6 +208,11 @@ TEST(utility_tests, find_sequence_test)
 
 	TEST_ASSERT_EQUAL_INT(find_sequence(table2_empty, 256, 256), 0);
 	TEST_ASSERT_EQUAL_INT(find_sequence(table2_empty, 256, 50000), -1);
+
+	table1[4] = 0x80;
+	table1[5] = 0x00;
+	table1[6] = 0x10;
+	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 15), 33);
 }
 
 TEST(utility_tests, write_seq_test)

@@ -10,7 +10,8 @@ extern bool free_disk_space(struct FILE_SYSTEM *fs,
 	uint size);
 extern void delete_invalid_inodes(struct FILE_SYSTEM *fs);
 extern bool isNotValid(struct INODE *inode);
-extern bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size);
+extern bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file,
+	uint size);
 extern void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 extern uint inodes_used(struct FILE_SYSTEM *fs);
 extern void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer);
@@ -152,9 +153,11 @@ TEST_TEAR_DOWN(fs_tests)
 TEST(fs_tests, free_disk_space_test)
 {
 	int i;
+	uint now;
 	struct INODE *tmp;
 
 	tmp = malloc(sizeof(struct INODE));
+	now = (uint) time(NULL);
 
 	fs_mount(disk1, &fs1);
 
@@ -170,10 +173,17 @@ TEST(fs_tests, free_disk_space_test)
 	TEST_ASSERT_TRUE(free_disk_space(&fs1, 100));
 	TEST_ASSERT_TRUE(free_disk_space(&fs1, 100));
 
+	fs_create(&fs1, tmp, 1000, 0, true);
+	TEST_ASSERT_TRUE(free_disk_space(&fs1, 1000));
+	fs_create(&fs1, tmp, 1000, now + 10000, true);
+	TEST_ASSERT_FALSE(free_disk_space(&fs1, 1000));
+	fs_create(&fs1, tmp, 1000, now + 10000, false);
+	TEST_ASSERT_TRUE(free_disk_space(&fs1, 1000));
+
 	free(tmp);
 }
 
-/* TODO:More test cases */
+/* TODO:More test cases for the inode block resizing */
 TEST(fs_tests, fs_create_test)
 {
 	uint i, tmp_time;
@@ -189,7 +199,8 @@ TEST(fs_tests, fs_create_test)
 	tmp = fs_getfree(&fs1) / fs1.sector_size;
 	for (i = 0; i < 8; ++i) {
 		tmp_time = (uint) time(NULL) + 10000;
-		res  = fs_create(&fs1, &inodes[0],8 * fs1.sector_size, tmp_time, true);
+		res = fs_create(&fs1, &inodes[0], 8 * fs1.sector_size,
+			tmp_time, true);
 		tmp -= 8;
 		if (tmp > 8) {
 			disk_read(disk1, (char *) al_tab, fs1.alloc_table,
@@ -198,7 +209,7 @@ TEST(fs_tests, fs_create_test)
 			disk_read(disk1, (char *) in_tab, fs1.inode_alloc_table,
 				fs1.inode_alloc_table_size);
 			tmp_byte = 0x80 >> i;
-			TEST_ASSERT_EQUAL(in_tab[0] & tmp_byte, tmp_byte); 
+			TEST_ASSERT_EQUAL(in_tab[0] & tmp_byte, tmp_byte);
 		} else {
 			TEST_ASSERT_EQUAL(res, FS_FULL);
 		}
@@ -217,7 +228,31 @@ TEST(fs_tests, fs_create_test)
 
 TEST(fs_tests, delete_invalid_inodes_test)
 {
-	TEST_ASSERT_EQUAL(1, 0);
+	uint now, tmp, free_disk_space;
+	enum FSRESULT ret_val;
+
+	now = (uint) time(NULL);
+
+	fs_mount(disk1, &fs1);
+
+	free_disk_space = fs_getfree(&fs1);
+	fs_create(&fs1, &in1, 100, now + 100, true);
+	fs_create(&fs1, &in2, 100, now + 100, false);
+	fs_create(&fs1, &in3, 1000, now - 100, true);
+	fs_create(&fs1, &in4, 1000, now - 100, false);
+
+	tmp = inodes_used(&fs1);
+	TEST_ASSERT_EQUAL_UINT(4, tmp);
+	delete_invalid_inodes(&fs1);
+	tmp = inodes_used(&fs1);
+	TEST_ASSERT_EQUAL_UINT(2, tmp);
+	tmp = free_disk_space - (fs1.sector_size * 6);
+	TEST_ASSERT_EQUAL_UINT(tmp, fs_getfree(&fs1));
+
+	ret_val = fs_open(&fs1, in3.id, &in3);
+	TEST_ASSERT_EQUAL(FS_ERROR, ret_val);
+	ret_val = fs_open(&fs1, in4.id, &in4);
+	TEST_ASSERT_EQUAL(FS_ERROR, ret_val);
 }
 
 TEST(fs_tests, find_first_IN_length_test)
@@ -226,7 +261,7 @@ TEST(fs_tests, find_first_IN_length_test)
 
 	fs_mount(disk1, &fs1);
 
-	fs_create(&fs1, &in1, 128, 100 , false);
+	fs_create(&fs1, &in1, 128, 100, false);
 	TEST_ASSERT_TRUE(find_first_IN_length(&fs1, &tmp, 128));
 	fs_create(&fs1, &in1, 128, 100, true);
 	fs_create(&fs1, &in1, 64, 100, false);
@@ -357,6 +392,14 @@ TEST(fs_tests, fs_delete_test2)
 	disk_read(disk1, (char *) buffer, fs1.inode_alloc_table, 1);
 	TEST_ASSERT_EQUAL_HEX8(buffer[0], 0xA0);
 
+	fs_delete(&fs1, &in3);
+
+	disk_read(disk1, (char *) buffer, fs1.alloc_table, 1);
+	TEST_ASSERT_EQUAL_HEX8(buffer[0], 0x80);
+
+	disk_read(disk1, (char *) buffer, fs1.inode_alloc_table, 1);
+	TEST_ASSERT_EQUAL_HEX8(buffer[0], 0x80);
+
 	free(buffer);
 }
 
@@ -368,15 +411,17 @@ TEST(fs_tests, fs_delete_test)
 	tmp = malloc(sizeof(struct INODE));
 
 	fs_mount(disk1, &fs1);
-	write_inode(&fs1, &in1);
-	write_inode(&fs1, &in2);
-	write_inode(&fs1, &in3);
+	in1.id = 42;
+	in2.id = 2000;
+	fs_create(&fs1, &in1, 100, 100, false);
+	fs_create(&fs1, &in2, 100, 100, false);
+	fs_create(&fs1, &in3, 100, 100, false);
 
-	fs_delete(&fs1, &in1);
-	TEST_ASSERT_EQUAL(fs_open(&fs1, in1.id, tmp), FS_ERROR);
+	TEST_ASSERT_EQUAL(FS_OK, fs_delete(&fs1, &in1));
 	TEST_ASSERT_EQUAL(fs_open(&fs1, in2.id, tmp), FS_OK);
-	fs_delete(&fs1, &in2);
-	TEST_ASSERT_EQUAL(fs_open(&fs1, in2.id, tmp), FS_ERROR);
+	TEST_ASSERT_EQUAL(fs_open(&fs1, 42, tmp), FS_ERROR);
+	TEST_ASSERT_EQUAL(FS_OK, fs_delete(&fs1, &in2));
+	TEST_ASSERT_EQUAL(fs_open(&fs1, 2000, tmp), FS_ERROR);
 
 	offset = fs1.inode_block + in3.inode_offset;
 	fs_delete(&fs1, &in3);
@@ -471,8 +516,7 @@ TEST(fs_tests, fs_open_test)
 	tmp = malloc(sizeof(struct INODE));
 
 	for (i = 0; i < 3; ++i) {
-		memcpy(buffer, &inodes[i], sizeof(struct INODE));
-		disk_write(disk2, (char *) buffer, fs1.inode_block + i, 1);
+		fs_create(&fs1, &inodes[i], 100, 100, true);
 
 		fs_open(&fs1, inodes[i].id, tmp);
 
@@ -491,6 +535,8 @@ TEST(fs_tests, fs_open_test)
 			inodes[i].time_to_live);
 	}
 
+	TEST_ASSERT_EQUAL(FS_ERROR, fs_open(&fs1, 10101, &in1));
+
 	free(tmp);
 	free(buffer);
 }
@@ -502,7 +548,7 @@ TEST(fs_tests, fs_mount_test)
 
 	for (i = 0; i < 4; ++i) {
 		disk_initialize(disks[i]);
-		fs_mount(disks[i], &fs1);
+		TEST_ASSERT_EQUAL(FS_OK, fs_mount(disks[i], &fs1));
 
 		TEST_ASSERT_EQUAL_UINT(fs1.sector_size, disks[i]->sector_size);
 		TEST_ASSERT_EQUAL_UINT(fs1.sector_count,
@@ -539,7 +585,7 @@ TEST(fs_tests, fs_mkfs_test)
 
 		buffer = malloc(disks[k]->sector_size);
 		disk_initialize(disks[k]);
-		fs_mkfs(disks[k]);
+		TEST_ASSERT_EQUAL(FS_OK, fs_mkfs(disks[k]));
 		at_size = div_up(disks[k]->sector_count,
 			disks[k]->sector_size);
 		ib_size = disks[k]->sector_count / 8;
@@ -608,8 +654,7 @@ TEST(fs_tests, inodes_used_test)
 	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
 	struct INODE inodes[3] = {in1, in2, in3};
 
-	for (k = 0; k < 4; ++k)
-	{
+	for (k = 0; k < 4; ++k) {
 		tmp = 0;
 		fs_mount(disks[k], &fs1);
 		for (i = 0; i < 3; ++i) {
@@ -630,7 +675,7 @@ TEST(fs_tests, load_inodes_all_full_test)
 	fs_mount(disk1, &fs1);
 
 	for (i = 0; i < 3; ++i)
-		fs_create(&fs1, &inodes[i], 1 , 1, true);
+		fs_create(&fs1, &inodes[i], 1, 1, true);
 
 	tmp = malloc(sizeof(struct INODE) * inodes_used(&fs1));
 	load_inodes_all_full(&fs1, tmp);
@@ -650,7 +695,7 @@ TEST(fs_tests, load_inodes_all_full_test)
 	free(tmp);
 }
 
-/* TODO: More test cases */
+/* TODO: More test cases and fix defragment */
 TEST(fs_tests, defragment_test)
 {
 	uint i;
@@ -664,7 +709,7 @@ TEST(fs_tests, defragment_test)
 
 	fs_delete(&fs1, &inodes[1]);
 
-	//defragment(&fs1);
+	/* defragment(&fs1); */
 
 	fs_open(&fs1, inodes[0].id, &tmp);
 
@@ -681,7 +726,7 @@ TEST(fs_tests, defragment_test)
 		fs_delete(&fs1, &tmp);
 	}
 
-	//defragment(&fs1);
+	/* defragment(&fs1); */
 
 }
 

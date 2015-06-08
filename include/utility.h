@@ -23,6 +23,7 @@ int last_free_bits(uint8_t byte);
 int get_free_bit(uint8_t index, uint8_t byte);
 int popcount(uint8_t byte);
 void checksum(const uint8_t *buffer, uint lenght, uint8_t *result, uint size);
+uint checksum_size(uint size);
 bool checksum_check(const uint8_t *buffer, const struct INODE *file,
 uint sector_size);
 int find_sequence_small(const uint8_t *table, uint table_size, uint length);
