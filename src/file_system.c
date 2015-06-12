@@ -484,7 +484,8 @@ void defragment(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
 	uint8_t *buffer, *al_tab;
-	uint inode_count, k, i, sec_cnt, tmp, al_tab_sec, old_loc;
+	uint inode_count, k, sec_cnt, tmp, al_tab_sec, old_loc;
+	int i;
 
 	inode_count = inodes_used(fs);
 	inodes = malloc(inodes_used(fs) * sizeof(struct INODE));
@@ -497,43 +498,55 @@ void defragment(struct FILE_SYSTEM *fs)
 
 	quicksort_inodes(inodes, inode_count);
 
-	k = 0;
-	for (i = 0; i < inode_count; ++i) {
+	k = fs->sector_count;
+	for (i = inode_count - 1; i >= 0; --i) {
 		sec_cnt = div_up(inodes[i].size, fs->sector_size);
-		if (inodes[i].location == k) {
-			k += sec_cnt;
-			continue;
-		}
+		sec_cnt += div_up(inodes[i].check_size, fs->sector_size);
+		/* TODO: Jump over inode if its at the right place */
 
 		buffer = malloc(sec_cnt * fs->sector_size);
 		disk_read(fs->disk, (char *) buffer, inodes[i].location,
 			sec_cnt);
 
+		/*TODO: Find  a better swap place*/
 		tmp = find_sequence(al_tab, al_tab_sec, sec_cnt);
 
 		if (tmp < 0) {
-			k += sec_cnt;
+			k = inodes[i].location;
 			free(buffer);
 			continue;
 		}
 
-		disk_write(fs->disk, (char *) buffer, tmp, sec_cnt);
+		disk_write(fs->disk, (char *) buffer, fs->sector_count - (tmp + sec_cnt),
+			sec_cnt);
 		write_seq(al_tab, tmp, sec_cnt);
 		disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
 			fs->alloc_table_size);
 		old_loc = inodes[i].location;
-		inodes[i].location = tmp;
+		inodes[i].location = fs->sector_count - (tmp + sec_cnt);
 		write_inode(fs, &inodes[i]);
 
-		delete_seq(al_tab, old_loc, sec_cnt);
-		write_seq(al_tab, k, sec_cnt);
+		if (k == (fs->sector_count - tmp)) {
+			k = inodes[i].location;
+			free(buffer);
+			delete_seq(al_tab, fs->sector_count - old_loc - sec_cnt, sec_cnt);
+			disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
+			fs->alloc_table_size);
+			continue;
+		}
 
-		disk_write(fs->disk, (char *) buffer, k, sec_cnt);
+		delete_seq(al_tab, fs->sector_count - old_loc, sec_cnt);
+		write_seq(al_tab, fs->sector_count - (k - sec_cnt), sec_cnt);
+
+		disk_write(fs->disk, (char *) buffer, k - sec_cnt, sec_cnt);
 		disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
 			fs->alloc_table_size);
-		inodes[i].location = k;
+		inodes[i].location = k - sec_cnt;
 		write_inode(fs, &inodes[i]);
-		k += sec_cnt;
+		delete_seq(al_tab, tmp, sec_cnt);
+		disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
+			fs->alloc_table_size);
+		k = inodes[i].location;
 		free(buffer);
 	}
 	free(inodes);

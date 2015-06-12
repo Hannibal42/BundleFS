@@ -698,7 +698,7 @@ TEST(fs_tests, load_inodes_all_full_test)
 /* TODO: More test cases and fix defragment */
 TEST(fs_tests, defragment_test)
 {
-	uint i;
+	uint i, k;
 	struct INODE inodes[3] = {in1, in2, in3};
 	struct INODE tmp;
 
@@ -709,16 +709,22 @@ TEST(fs_tests, defragment_test)
 
 	fs_delete(&fs1, &inodes[1]);
 
-	/* defragment(&fs1); */
+	defragment(&fs1);
 
 	fs_open(&fs1, inodes[0].id, &tmp);
 
-	TEST_ASSERT_EQUAL(tmp.location, 1);
+	TEST_ASSERT_EQUAL(tmp.location, 62);
 	TEST_ASSERT_EQUAL(tmp.inode_offset, 0);
+	fs_delete(&fs1, &tmp);
+
+	fs_open(&fs1, inodes[2].id, &tmp);
+	TEST_ASSERT_EQUAL(tmp.location, 60);
+	TEST_ASSERT_EQUAL(tmp.inode_offset, 2);
+	fs_delete(&fs1, &tmp);
 
 	for (i = 0; i < 8; ++i) {
 		tmp.id = i;
-		fs_create(&fs1, &tmp, 1, 1, true);
+		fs_create(&fs1, &tmp, fs1.sector_size, 1, true);
 	}
 
 	for (i = 0; i < 4; ++i) {
@@ -726,7 +732,67 @@ TEST(fs_tests, defragment_test)
 		fs_delete(&fs1, &tmp);
 	}
 
-	/* defragment(&fs1); */
+	defragment(&fs1);
+
+	k = 62;
+	for (i = 0; i < 4; ++i) {
+		fs_open(&fs1, 2 * i + 1, &tmp);
+		TEST_ASSERT_EQUAL(tmp.location, k);
+		TEST_ASSERT_EQUAL(tmp.inode_offset, 2 * i + 1);
+		k -= 2;
+	}
+
+}
+
+TEST(fs_tests, defragment_test2)
+{
+	uint i, k;
+	struct INODE tmp;
+	struct INODE inodes[8];
+	uint8_t *buf;
+
+	fs_mount(disk1, &fs1);
+
+	for (i = 0; i < 3; ++i) {
+		fs_create(&fs1, &tmp, fs1.sector_size, 1, true);
+		inodes[i] = tmp;
+		fs_write(&fs1, &tmp, (char *) data1);
+	}
+
+	for (i = 3; i < 8; ++i) {
+		tmp.id = i;
+		fs_create(&fs1, &tmp, fs1.sector_size * 2, 1, true);
+		inodes[i] = tmp;
+		fs_write(&fs1, &tmp, (char *) data2);
+	}
+
+	for (i = 0; i < 4; ++i) {
+		fs_delete(&fs1, &inodes[i * 2]);
+	}
+
+	defragment(&fs1);
+
+	buf = malloc(fs1.sector_size * fs1.alloc_table_size);
+
+	disk_read(disk1, (char *) buf, fs1.alloc_table, fs1.alloc_table_size);
+
+	TEST_ASSERT_EQUAL_HEX8(0xFF, buf[0]);
+	TEST_ASSERT_EQUAL_HEX8(0xE0, buf[1]);
+
+	free(buf);
+
+	buf = malloc(fs1.sector_size * 2);
+	for (i = 1; i < 4; ++i) {
+		fs_open(&fs1, inodes[i * 2 + 1].id, &tmp);
+		TEST_ASSERT_EQUAL(inodes[i * 2 + 1].size, tmp.size);
+		fs_read(&fs1, &tmp, (char *) buf, tmp.size);
+
+		for (k = 0; k < tmp.size; ++k) {
+			TEST_ASSERT_EQUAL_HEX8(data2[k], buf[k]);
+		}
+
+	}
+	free(buf);
 
 }
 
@@ -750,4 +816,5 @@ TEST_GROUP_RUNNER(fs_tests)
 	RUN_TEST_CASE(fs_tests, inodes_used_test);
 	RUN_TEST_CASE(fs_tests, load_inodes_all_full_test);
 	RUN_TEST_CASE(fs_tests, defragment_test);
+	RUN_TEST_CASE(fs_tests, defragment_test2);
 }
