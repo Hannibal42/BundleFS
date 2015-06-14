@@ -269,7 +269,7 @@ bool checksum_check(const uint8_t *buffer, const struct INODE *file,
 	cbc = sector_count_check * sector_size;
 
 	tmp = malloc(cbc);
-	checksum(buffer, fbc, tmp, cbc);
+	checksum(buffer, fbc, tmp, file->check_size);
 
 	for (i = 0; i < file->check_size; ++i) {
 		if (buffer[i + fbc] != tmp[i]) {

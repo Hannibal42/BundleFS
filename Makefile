@@ -1,18 +1,25 @@
 .PHONY : all
 
-SRC = src/*.c unity/src/*.c
-INC = -Iinclude/ -Iunity/include/
+SRC = src/*.c
+SRC_TEST = unity/src/*.c test/src/*.c
+INC = -Iinclude/ -Iunity/include/ -Itest/include
 
 all: 
-	gcc $(SRC) $(INC) -o build/start
+	gcc $(SRC) $(SRC_TEST) $(INC) -o build/test
 
 debug: 
-	gcc $(SRC) -Wall $(INC) -ggdb -o build/start
+	gcc $(SRC) $(SRC_TEST) -Wall $(INC) -ggdb -o build/test 
 
 gdb:
-	gcc $(SRC) -Wall -ggdb $(INC) -o build/start
-	gdb build/start
+	gcc $(SRC) $(SRC_TEST) -Wall -ggdb $(INC) -o build/test
+	gdb build/test
 
 clean: 
 	rm build/*
 	rm disks/*
+
+memory:
+	gcc $(SRC) -Wall $(INC) -ggdb -o build/start
+
+memprof:
+	valgrind --massif-out-file=build/memory.out --tool=massif build/start
