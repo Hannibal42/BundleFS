@@ -280,7 +280,7 @@ TEST(fs_tests, fs_write_test)
 
 	tmp = malloc(sizeof(struct INODE));
 	buffer = malloc(100);
-	buffer2 = malloc(100);
+	buffer2 = malloc(128);
 
 	fs_mount(disk1, &fs1);
 	fs_create(&fs1, tmp, 100, 10, true);
@@ -766,9 +766,8 @@ TEST(fs_tests, defragment_test2)
 		fs_write(&fs1, &tmp, (char *) data2);
 	}
 
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < 4; ++i)
 		fs_delete(&fs1, &inodes[i * 2]);
-	}
 
 	defragment(&fs1);
 
@@ -787,9 +786,8 @@ TEST(fs_tests, defragment_test2)
 		TEST_ASSERT_EQUAL(inodes[i * 2 + 1].size, tmp.size);
 		fs_read(&fs1, &tmp, (char *) buf, tmp.size);
 
-		for (k = 0; k < tmp.size; ++k) {
+		for (k = 0; k < tmp.size; ++k)
 			TEST_ASSERT_EQUAL_HEX8(data2[k], buf[k]);
-		}
 
 	}
 	free(buf);

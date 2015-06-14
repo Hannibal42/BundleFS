@@ -3,5 +3,7 @@
 
 #include <unity_fixture.h>
 
+#include "fs_test.h"
+
 #endif /* MAIN_H */
 

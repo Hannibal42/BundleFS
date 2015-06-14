@@ -5,7 +5,6 @@ extern bool isNotValid(struct INODE *inode);
 extern void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer);
 extern uint inodes_used(struct FILE_SYSTEM *fs);
 
-
 void defragment(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
@@ -41,8 +40,8 @@ void defragment(struct FILE_SYSTEM *fs)
 			continue;
 		}
 
-		disk_write(fs->disk, (char *) buffer, fs->sector_count - (tmp + sec_cnt),
-			sec_cnt);
+		disk_write(fs->disk, (char *) buffer,
+			fs->sector_count - (tmp + sec_cnt), sec_cnt);
 		write_seq(al_tab, tmp, sec_cnt);
 		disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
 			fs->alloc_table_size);
@@ -53,7 +52,8 @@ void defragment(struct FILE_SYSTEM *fs)
 		if (k == (fs->sector_count - tmp)) {
 			k = inodes[i].location;
 			free(buffer);
-			delete_seq(al_tab, fs->sector_count - old_loc - sec_cnt, sec_cnt);
+			delete_seq(al_tab, fs->sector_count - old_loc - sec_cnt,
+				sec_cnt);
 			disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
 			fs->alloc_table_size);
 			continue;

@@ -1,8 +1,9 @@
 .PHONY : all
 
 SRC = src/*.c
-SRC_TEST = unity/src/*.c test/src/*.c
-INC = -Iinclude/ -Iunity/include/ -Itest/include
+SRC_TEST = test/src/*.c unity/src/*.c 
+SRC_MEM = memprof/*.c
+INC = -Iinclude/ -Itest/include/ -Iunity/include/
 
 all: 
 	gcc $(SRC) $(SRC_TEST) $(INC) -o build/test
@@ -19,7 +20,10 @@ clean:
 	rm disks/*
 
 memory:
-	gcc $(SRC) -Wall $(INC) -ggdb -o build/start
+	gcc $(SRC) $(SRC_MEM) -Wall $(INC) -ggdb -o build/memory
 
-memprof:
-	valgrind --massif-out-file=build/memory.out --tool=massif build/start
+heap:
+	valgrind --massif-out-file=build/memory.out --max-snapshots=1000 --tool=massif build/memory
+
+stack:
+	valgrind --massif-out-file=build/memory.out --stacks=yes --max-snapshots=1000 --tool=massif build/memory

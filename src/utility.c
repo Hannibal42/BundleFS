@@ -245,9 +245,9 @@ void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
 	tmp = malloc(length);
 	memcpy(tmp, buffer, length);
 
-	while (length > (size + 1)) {
+	while (length > size) {
 		for (i = 0; i < (length - 1); ++i)
-				tmp[i] = tmp[i * 2] ^ tmp[i * 2 + 1];
+				tmp[i] = tmp[i] ^ tmp[i + 1];
 		length /= 2;
 	}
 
@@ -297,32 +297,3 @@ void quicksort_inodes(struct INODE *inodes, int nitems)
 {
 	qsort(inodes, nitems, sizeof(struct INODE), cmp_INODES);
 }
-
-/*
-uint get_free_sectors_count(const uint8_t *table, uint table_size)
-{
-	unsigned long tmp;
-	uint i;
-
-	tmp = 0;
-	for (i = 0; i < table_size; ++i)
-		tmp += (8 - popcount((uint8_t) table[i]));
-
-	return tmp;
-}
-
-struct INODE *load_inodes(const uint8_t *table, uint table_size,
-	uint *ret_size, struct FILE_SYSTEM *fs)
-{
-	uint i, inode_count;
-	struct INODE *tmp;
-
-	inode_count = get_free_sectors_count(table,table_size);
-	tmp = malloc(inode_count);
-
-	for (i = 0; i < table_size; ++i) {
-
-	}
-
-	return NULL;
-} */

@@ -9,7 +9,7 @@ int main(void)
 
 	disk_fill(&disk, "disks/disk4.disk", 104857600, 4096);
 
-	disk_create(&disk, 104857600);
+	disk_create(&disk,  104857600);
 	disk_initialize(&disk);
 	fs_mkfs(&disk);
 
@@ -30,11 +30,7 @@ int main(void)
 
 	buf = malloc(fs.sector_size);
 
-	if (fs_read(&fs, &fil, (char *) buf, fs.sector_size) == FS_OK)
-		for (i = 0; i < fs.sector_size; ++i)
-			printf("%x", buf[i]);
-
-	printf("\n");
+	fs_read(&fs, &fil, (char *) buf, fs.sector_size);
 
 	fs_delete(&fs, &fil);
 
@@ -56,9 +52,9 @@ int main(void)
 
 	for (i = 0; i < 100; ++i) {
 		fil.id = i;
-		fs_create(&fs, &fil, fs.sector_size, 1, true);
+		fs_create(&fs, &fil,2 * fs.sector_size, 1, true);
 		fs_write(&fs, &fil, (char *) buf);
-		fs_read(&fs, &fil, (char *) buf, fs.sector_size);
+		fs_read(&fs, &fil, (char *) buf,2 * fs.sector_size);
 	}
 
 	return 0;

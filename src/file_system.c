@@ -81,13 +81,16 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	fs->sector_size = sector_size;
 	fs->sector_count = sector_count;
 	size = sector_size * fs->inode_block_size;
+
+	/* TODO: Remove
 	tmparray = malloc(sizeof(struct INODE) * size);
 	for (i = 0; i < size; ++i)
 		tmparray[i] = 0x0;
 
 	disk_write(disk, tmparray, fs->inode_block, fs->inode_block_size);
-	free(tmparray);
+	free(tmparray); */
 	/*Make superblock*/
+
 	tmparray = malloc(fs->sector_size * superblock_size);
 	memcpy(tmparray, fs, sizeof(struct FILE_SYSTEM));
 	disk_write(disk, tmparray, 0, superblock_size);
@@ -205,17 +208,31 @@ enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
 enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 	char *buffer)
 {
-	uint sector_count_file, sector_count_check;
+	uint sector_count_file, sector_count_check, pad;
 	uint8_t *che_buf;
+	char *sec_buf;
 
 	sector_count_file = div_up(file->size, fs->sector_size);
+	pad = file->size % fs->sector_size;
 	sector_count_check = div_up(file->check_size, fs->sector_size);
 
 	che_buf = malloc(sector_count_check * fs->sector_size);
 	checksum((uint8_t *) buffer, file->size, che_buf, file->check_size);
 	file->last_modified = (uint) time(NULL);
 
-	disk_write(fs->disk, buffer, file->location, sector_count_file);
+	/* Makes a padding if the file does not fit the sectors */
+	if (pad) {
+		sec_buf = malloc(fs->sector_size);
+		memcpy(sec_buf, &buffer[file->size - pad], pad);
+		disk_write(fs->disk, buffer, file->location,
+			sector_count_file - 1);
+		disk_write(fs->disk, sec_buf, file->location +
+			sector_count_file - 1, 1);
+		free(sec_buf);
+	} else {
+		disk_write(fs->disk, buffer, file->location, sector_count_file);
+	}
+
 	disk_write(fs->disk, (char *) che_buf, file->location +
 		sector_count_file, sector_count_check);
 	free(che_buf);
@@ -356,8 +373,10 @@ bool free_disk_space(struct FILE_SYSTEM *fs, uint size)
 
 	inode = malloc(sizeof(struct INODE));
 
-	if (!find_first_IN_length(fs, inode, size))
+	if (!find_first_IN_length(fs, inode, size)) {
+		free(inode);
 		return false;
+	}
 	/* TODO: Delete more than one inode if needed */
 	/* TODO: Maybe write a better delete for this case */
 	fs_delete(fs, inode);
@@ -373,10 +392,10 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 	uint8_t *tmp;
 	uint i, size, ret_val;
 
-	tmp = malloc(fs->inode_alloc_table_size * fs->sector_size);
+	size = fs->sector_size * fs->inode_alloc_table_size;
+	tmp = malloc(size);
 
 	ret_val = 0;
-	size = fs->sector_size * fs->inode_alloc_table_size;
 	disk_read(fs->disk, (char *) tmp, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
 	for (i = 0; i < size; ++i)
@@ -390,23 +409,34 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 /* This needs to be called with a buffer that can hold all inodes! */
 void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
-	uint i, k;
-	uint8_t *tmp;
-	struct INODE *tmp_in;
+	uint i, k, r, size;
+	uint8_t *tmp_sec, *in_tab, tmp_byte;
 
-	tmp = malloc(fs->sector_size);
 
-	k = 0;
-	for (i = 0; i < fs->inode_block_size; ++i) {
-		disk_read(fs->disk, (char *) tmp, fs->inode_block + i, 1);
-		tmp_in = (struct INODE *) tmp;
-		if (tmp_in->creation_date != 0) {
-			memcpy(&buffer[k], tmp, sizeof(struct INODE));
-			++k;
+	tmp_sec = malloc(fs->sector_size);
+	size = fs->inode_alloc_table_size * fs->sector_size;
+	in_tab = malloc(size);
+
+	disk_read(fs->disk, (char *) in_tab, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
+
+	r = 0;
+	for (i = 0; i < (fs->inode_block_size / 8); ++i) {
+		for (k = 0; k < 8; ++k) {
+			tmp_byte = (0x80 >> k);
+			if (in_tab[i] & tmp_byte) {
+				tmp_byte = i * 8 + k + fs->inode_block;
+				disk_read(fs->disk, (char *) tmp_sec,
+					tmp_byte, 1);
+				memcpy(&buffer[r], tmp_sec,
+					sizeof(struct INODE));
+				++r;
+			}
 		}
 	}
 
-	free(tmp);
+	free(in_tab);
+	free(tmp_sec);
 }
 
 /* Finds the first inode that can be deleted and returns that inode*/
@@ -453,6 +483,7 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 	free(tmp);
 }
 
+/*
 bool resize_inode_block(struct FILE_SYSTEM *fs, int size)
 {
 	uint8_t *tmp;
@@ -465,16 +496,15 @@ bool resize_inode_block(struct FILE_SYSTEM *fs, int size)
 	in_max = fs->inode_block_size;
 	if (size > 0) {
 
-
 	} else {
-		/* TODO: Change this when you
-		change the inode packing*/ 
+		*//* TODO: Change this when you
+		change the inode packing*//*
 		size += in_max;
 		for (i = in_max; i < in_max; ++i) {
-			
+
 		}
 	}
 
 	free(tmp);
 	return true;
-}
+} */
