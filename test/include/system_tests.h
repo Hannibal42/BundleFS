@@ -5,6 +5,7 @@
 #include <unity_fixture.h>
 
 #include "file_system.h"
+#include "tasks.h"
 
 void run_system_tests(void);
 

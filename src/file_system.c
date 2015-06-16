@@ -7,6 +7,7 @@ bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file,
 	uint size);
 uint inodes_used(struct FILE_SYSTEM *fs);
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
+bool resize_inode_block(struct FILE_SYSTEM *fs);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
@@ -317,14 +318,23 @@ unsigned long size, uint time_to_live, bool custody)
 	/*Finds and writes a free inode in the inode alloc table*/
 	bytes_IN_table  = fs->inode_alloc_table_size * fs->sector_size;
 	IN_off = find_bit(IN_table, bytes_IN_table);
+	if (IN_off < 0) {
+		if (resize_inode_block(fs)) {
+			disk_read(fs->disk, (char *) IN_table, fs->inode_alloc_table,
+				fs->inode_alloc_table_size);
+			/* This mount is needed because the metadata changed */
+			fs_mount(fs->disk, fs);
+			++bytes_IN_table;
+			IN_off = find_bit(IN_table, bytes_IN_table);
+		} else {
+		ret_val = FS_FULL;
+		goto END;
+		}
+	}
+
 	/*Finds a sequence of bits that are empty in the allocation table*/
 	bytes_AL_table  = fs->alloc_table_size * fs->sector_size;
 	AL_off = find_sequence(AL_table, bytes_AL_table, bit_count);
-	if (IN_off < 0) {
-		/* Call the function to extend the inode block here */
-		ret_val = FS_FULL;
-		goto END;
-	}
 	/* TODO: Check if this is the right execution order...
 		maybe I only want to delete if the new bundel has custody set*/
 	if (AL_off < 0) {
@@ -333,6 +343,9 @@ unsigned long size, uint time_to_live, bool custody)
 				fs->alloc_table_size);
 			AL_off = find_sequence(AL_table, bytes_AL_table,
 				bit_count);
+			disk_read(fs->disk, (char *) IN_table, fs->inode_alloc_table,
+				fs->inode_alloc_table_size);
+			IN_off = find_bit(IN_table, bytes_IN_table);
 
 		if (AL_off < 0) {
 			ret_val = FS_FULL;
@@ -483,28 +496,51 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 	free(tmp);
 }
 
-/*
-bool resize_inode_block(struct FILE_SYSTEM *fs, int size)
+bool resize_inode_block(struct FILE_SYSTEM *fs)
 {
-	uint8_t *tmp;
-	int i, in_max;
+	uint8_t *al_tab, *tmp_sec, *in_tab;
+	uint tmp, in_max, bits;
 
-	tmp = malloc(fs->inode_alloc_table_size);
-	disk_read(fs->disk, (char *) tmp, fs->inode_alloc_table,
-		fs->inode_block_size);
+	al_tab = malloc(fs->sector_size * fs->alloc_table_size);
+	disk_read(fs->disk, (char *) al_tab, fs->alloc_table,
+		fs->alloc_table_size);
 
-	in_max = fs->inode_block_size;
-	if (size > 0) {
+	in_tab = malloc(fs->sector_size * fs->inode_alloc_table_size);
+	disk_read(fs->disk, (char *) in_tab, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
 
-	} else {
-		*//* TODO: Change this when you
-		change the inode packing*//*
-		size += in_max;
-		for (i = in_max; i < in_max; ++i) {
+	tmp = fs->sector_count - (fs->inode_block + fs->inode_block_size);
+	in_max = div_up(fs->inode_block_size, 8);
 
-		}
+	bits = first_free_bits(al_tab[tmp/8]);
+	if (bits != (tmp % 8)) {
+		free(al_tab);
+		free(in_tab);
+		return false;
 	}
 
-	free(tmp);
+	bits = (last_free_bits(al_tab[(tmp/8) - 1]));
+	if (bits < (8 - (tmp % 8))) {
+		free(al_tab);
+		free(in_tab);
+		return false;
+	}
+
+	al_tab[(tmp/8) - 1] |= al_tab[tmp/8];
+	al_tab[tmp/8] = 0xFF;
+	in_tab[in_max] = 0x00;
+
+	disk_write(fs->disk, (char *) al_tab, fs->alloc_table, fs->alloc_table_size);
+	free(al_tab);
+
+	disk_write(fs->disk, (char *) in_tab, fs->inode_alloc_table, fs->inode_alloc_table_size);
+	free(in_tab);
+
+	tmp_sec = malloc(fs->sector_size);
+	fs->inode_block_size += 8;
+	memcpy(tmp_sec, fs, sizeof(struct FILE_SYSTEM));
+	disk_write(fs->disk, (char *) tmp_sec, 0, 1);
+	free(tmp_sec);
+
 	return true;
-} */
+}

@@ -70,9 +70,13 @@ TEST(system_tests, overflow_disk_test)
 
 	for (k = 0; k < 8; ++k) {
 		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs));
-		for (i = 0; i < 1000000; ++i)
-			TEST_ASSERT_EQUAL(FS_OK, fs_create(&fs, &tmp, 100,
-				100, false));
+		for (i = 0; i < 100000; ++i)
+			if (fs_create(&fs, &tmp, 100, 100, false) != FS_OK) {
+				delete_invalid_inodes(&fs);
+				defragment(&fs);
+				TEST_ASSERT_EQUAL(FS_OK,
+					fs_create(&fs, &tmp, 100, 100, false));
+			}
 	}
 }
 
