@@ -8,6 +8,7 @@ bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file,
 uint inodes_used(struct FILE_SYSTEM *fs);
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 bool resize_inode_block(struct FILE_SYSTEM *fs);
+void read_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
@@ -77,26 +78,18 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	free(tmparray);
 
 	/*Make Inode Block*/
-	fs->inode_block_size = max_file_count;
+	fs->inode_sec = sector_size / sizeof(struct INODE);
+	fs->inode_max = max_file_count;
+	fs->inode_block_size = div_up(fs->inode_max, fs->inode_sec);
 	fs->inode_block = fs->inode_alloc_table + fs->inode_alloc_table_size;
 	fs->sector_size = sector_size;
 	fs->sector_count = sector_count;
-	size = sector_size * fs->inode_block_size;
 
-	/* TODO: Remove
-	tmparray = malloc(sizeof(struct INODE) * size);
-	for (i = 0; i < size; ++i)
-		tmparray[i] = 0x0;
-
-	disk_write(disk, tmparray, fs->inode_block, fs->inode_block_size);
-	free(tmparray); */
 	/*Make superblock*/
-
 	tmparray = malloc(fs->sector_size * superblock_size);
 	memcpy(tmparray, fs, sizeof(struct FILE_SYSTEM));
 	disk_write(disk, tmparray, 0, superblock_size);
 	free(tmparray);
-
 
 	/* Update alloc_table padding */
 	tmparray = malloc(fs->alloc_table_size * fs->sector_size);
@@ -415,7 +408,7 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 		ret_val += 8 - popcount(tmp[i]);
 
 	free(tmp);
-	ret_val = fs->inode_block_size - ret_val;
+	ret_val = fs->inode_max - ret_val;
 	return ret_val;
 }
 
@@ -425,7 +418,6 @@ void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer)
 	uint i, k, r, size;
 	uint8_t *tmp_sec, *in_tab, tmp_byte;
 
-
 	tmp_sec = malloc(fs->sector_size);
 	size = fs->inode_alloc_table_size * fs->sector_size;
 	in_tab = malloc(size);
@@ -434,15 +426,13 @@ void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer)
 		fs->inode_alloc_table_size);
 
 	r = 0;
-	for (i = 0; i < (fs->inode_block_size / 8); ++i) {
+	for (i = 0; i < (fs->inode_max / 8); ++i) {
 		for (k = 0; k < 8; ++k) {
 			tmp_byte = (0x80 >> k);
 			if (in_tab[i] & tmp_byte) {
-				tmp_byte = i * 8 + k + fs->inode_block;
-				disk_read(fs->disk, (char *) tmp_sec,
-					tmp_byte, 1);
-				memcpy(&buffer[r], tmp_sec,
-					sizeof(struct INODE));
+				tmp_byte = i * 8 + k;
+				buffer[r].inode_offset = tmp_byte;
+				read_inode(fs, &buffer[r]);
 				++r;
 			}
 		}
@@ -484,15 +474,47 @@ bool isNotValid(struct INODE *inode)
 	return t > inode->time_to_live;
 }
 
-void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
+/* TODO: Make a test */
+/* file has to have the right offset of the inode you want to load */
+void read_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 {
-	uint8_t *tmp;
+	struct INODE *tmp;
+	uint sec_off, ino_off, divisor;
+
+	divisor = fs->sector_size / sizeof(struct INODE);
+
+	sec_off = file->inode_offset;
+	ino_off = divisor - (sec_off % divisor) - 1;
+	sec_off /= divisor;
+	sec_off += fs->inode_block;
 
 	tmp = malloc(fs->sector_size);
-	memcpy(tmp, file, sizeof(struct INODE));
+	disk_read(fs->disk, (char *) tmp, sec_off, 1);
 
-	disk_write(fs->disk, (char *) tmp, fs->inode_block +
-		file->inode_offset, 1);
+	memcpy(file, &tmp[ino_off], sizeof(struct INODE));
+
+	free(tmp);
+}
+
+void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
+{
+	struct INODE *tmp;
+	uint sec_off, ino_off, divisor;
+
+	divisor = fs->sector_size / sizeof(struct INODE);
+
+	sec_off = file->inode_offset;
+	ino_off = divisor - (sec_off % divisor) - 1;
+	sec_off /= divisor;
+	sec_off += fs->inode_block;
+
+
+	tmp = malloc(fs->sector_size);
+	disk_read(fs->disk, (char *) tmp, sec_off, 1);
+
+	memcpy(&tmp[ino_off], file, sizeof(struct INODE));
+
+	disk_write(fs->disk, (char *) tmp, sec_off, 1);
 	free(tmp);
 }
 
@@ -510,7 +532,7 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 		fs->inode_alloc_table_size);
 
 	tmp = fs->sector_count - (fs->inode_block + fs->inode_block_size);
-	in_max = div_up(fs->inode_block_size, 8);
+	in_max = div_up(fs->inode_max, 8);
 
 	bits = first_free_bits(al_tab[tmp/8]);
 	if (bits != (tmp % 8)) {
@@ -538,6 +560,7 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 
 	tmp_sec = malloc(fs->sector_size);
 	fs->inode_block_size += 8;
+	fs->inode_max = 8 * (fs->sector_size / sizeof(struct INODE));
 	memcpy(tmp_sec, fs, sizeof(struct FILE_SYSTEM));
 	disk_write(fs->disk, (char *) tmp_sec, 0, 1);
 	free(tmp_sec);

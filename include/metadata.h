@@ -21,6 +21,10 @@ struct FILE_SYSTEM {
 	/* Start of the inode block */
 	uint inode_block;
 	uint inode_block_size;
+	/* Maximal number of inodes */
+	uint inode_max;
+	/* Number of inodes per sector */
+	uint inode_sec;
 };
 
 /* File information */

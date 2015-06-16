@@ -1,7 +1,9 @@
 #include "main.h"
+#include "metadata.h"
 
 int main(void)
 {
+	printf("%lu\n", sizeof(struct INODE));
 	printf("\n-------------------utility_tests------------------\n");
 	RUN_TEST_GROUP(utility_tests);
 	printf("\n---------------------fs_tests---------------------\n");

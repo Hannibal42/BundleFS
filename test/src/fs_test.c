@@ -217,7 +217,7 @@ TEST(fs_tests, fs_create_test)
 	}
 
 	fs_mount(disk2, &fs2);
-	tmp = fs_getfree(&fs2) - fs2.sector_size;
+	tmp = fs_getfree(&fs2) - fs2.sector_size - 200;
 	res = fs_create(&fs2, &inodes[0], tmp, 100, false);
 	TEST_ASSERT_EQUAL(FS_OK, res);
 	res = fs_create(&fs2, &inodes[0], tmp, 100, true);
@@ -570,14 +570,18 @@ TEST(fs_tests, fs_mount_test)
 		tmp = fs1.sector_count / 8;
 		if (tmp < 8)
 			tmp = 8;
-		TEST_ASSERT_EQUAL_UINT(fs1.inode_block_size, tmp);
+		TEST_ASSERT_EQUAL_UINT(fs1.inode_max, tmp);
+		TEST_ASSERT_EQUAL_UINT(fs1.sector_size / sizeof(struct INODE),
+			fs1.inode_sec);
+		TEST_ASSERT_EQUAL_UINT(div_up(fs1.inode_max, fs1.inode_sec),
+			fs1.inode_block_size);
 	}
 }
 
 TEST(fs_tests, fs_mkfs_test)
 {
 	int i;
-	uint k, at_size, it_size, ib_size, tmp;
+	uint k, at_size, it_size, ino_max, ib_size, tmp;
 	uint8_t *buffer;
 	struct FILE_SYSTEM *fs;
 	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
@@ -589,10 +593,10 @@ TEST(fs_tests, fs_mkfs_test)
 		TEST_ASSERT_EQUAL(FS_OK, fs_mkfs(disks[k]));
 		at_size = div_up(disks[k]->sector_count,
 			disks[k]->sector_size);
-		ib_size = disks[k]->sector_count / 8;
-		if (ib_size < 8)
-			ib_size = 8;
-		it_size = div_up(ib_size, disks[k]->sector_size);
+		ino_max = disks[k]->sector_count / 8;
+		if (ino_max < 8)
+			ino_max = 8;
+		it_size = div_up(ino_max, disks[k]->sector_size);
 
 		disk_read(disks[k], (char *) buffer, 0, 1);
 
@@ -606,7 +610,12 @@ TEST(fs_tests, fs_mkfs_test)
 		TEST_ASSERT_EQUAL_UINT(fs->inode_alloc_table_size, it_size);
 		TEST_ASSERT_EQUAL_UINT(fs->inode_block,
 			(at_size + it_size + 1));
-		TEST_ASSERT_EQUAL_UINT(fs->inode_block_size, ib_size);
+		TEST_ASSERT_EQUAL_UINT(fs->inode_max, ino_max);
+		TEST_ASSERT_EQUAL_UINT(fs->sector_size / sizeof(struct INODE),
+			fs->inode_sec);
+		TEST_ASSERT_EQUAL_UINT(div_up(ino_max, fs->inode_sec),
+			fs->inode_block_size);
+		ib_size = fs->inode_block_size;
 
 		disk_read(disks[k], (char *) buffer, 1, at_size);
 		tmp = disks[k]->sector_count;
@@ -616,7 +625,7 @@ TEST(fs_tests, fs_mkfs_test)
 			TEST_ASSERT_EQUAL(buffer[i], 0x00);
 
 		disk_read(disks[k], (char *) buffer, 2, it_size);
-		tmp = ib_size / 8;
+		tmp = ino_max / 8;
 		for (i = 0; i < tmp; ++i)
 			TEST_ASSERT_EQUAL(buffer[i], 0x00);
 
