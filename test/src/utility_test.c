@@ -335,6 +335,33 @@ TEST(utility_tests, find_sequence_byte_test)
 	TEST_ASSERT_EQUAL(0, find_sequence_byte(0x07, 5));
 }
 
+TEST(utility_tests, check_seq_test)
+{
+	table1[11] = 0xC0;
+	TEST_ASSERT_TRUE(check_seq(table1, 90, 6));
+	TEST_ASSERT_TRUE(check_seq(table1, 90, 6));
+	TEST_ASSERT_FALSE(check_seq(table1, 90, 7));
+	TEST_ASSERT_TRUE(check_seq(table1, 91, 5));
+
+	table1[12] = 0x01;
+	TEST_ASSERT_TRUE(check_seq(table1, 90, 7));
+	TEST_ASSERT_TRUE(check_seq(table1, 90, 13));
+	TEST_ASSERT_FALSE(check_seq(table1, 90, 14));
+
+	table1[12] = 0x00;
+	table1[13] = 0x70;
+	TEST_ASSERT_TRUE(check_seq(table1, 95, 6));
+	TEST_ASSERT_TRUE(check_seq(table1, 90, 14));
+	TEST_ASSERT_TRUE(check_seq(table1, 90, 15));
+	TEST_ASSERT_FALSE(check_seq(table1, 90, 16));
+	TEST_ASSERT_TRUE(check_seq(table1, 96, 9));
+
+	table1[14] = 0xEF;
+	TEST_ASSERT_TRUE(check_seq(table1, 115, 1));
+	TEST_ASSERT_TRUE(check_seq(table1, 115, 0));
+	TEST_ASSERT_TRUE(check_seq(table1, 160, 0));
+}
+
 TEST_GROUP_RUNNER(utility_tests)
 {
 	RUN_TEST_CASE(utility_tests, write_bit_test);
@@ -349,4 +376,5 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, checksum_check_test);
 	RUN_TEST_CASE(utility_tests, quick_sort_inodes_test);
 	RUN_TEST_CASE(utility_tests, find_sequence_byte_test);
+	RUN_TEST_CASE(utility_tests, check_seq_test);
 }

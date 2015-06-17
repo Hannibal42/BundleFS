@@ -30,5 +30,6 @@ int find_sequence_small(const uint8_t *table, uint table_size, uint length);
 inline unsigned long div_up(unsigned long dividend,
 	unsigned long divisor);
 void quicksort_inodes(struct INODE *inodes, int nitems);
+bool check_seq(uint8_t *table, uint index, uint length);
 
 #endif /* UTILITY_H */

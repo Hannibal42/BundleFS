@@ -848,6 +848,36 @@ TEST(fs_tests, resize_inode_block_test)
 	free(tmp);
 }
 
+TEST(fs_tests, resize_inode_block_test2)
+{
+	uint8_t *tmp;
+
+	fs_mount(disk4, &fs1);
+	TEST_ASSERT_TRUE(resize_inode_block(&fs1));
+
+	tmp = malloc(fs1.sector_size * fs1.inode_alloc_table_size);
+	disk_read(disk4, (char *) tmp, fs1.inode_alloc_table,
+		fs1.inode_alloc_table_size);
+	TEST_ASSERT_EQUAL_HEX8(0x00, tmp[0]);
+	TEST_ASSERT_EQUAL_HEX8(0x00, tmp[1]);
+	TEST_ASSERT_EQUAL_HEX8(0x00, tmp[2]);
+	free(tmp);
+
+	tmp = malloc(fs1.sector_size * fs1.alloc_table_size);
+	disk_read(disk4, (char *) tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+	TEST_ASSERT_EQUAL_HEX8(0xFF, tmp[16]);
+	TEST_ASSERT_EQUAL_HEX8(0x3F, tmp[15]);
+	TEST_ASSERT_EQUAL_HEX8(0x00, tmp[14]);
+
+	tmp[15] = 0xFF;
+	disk_write(disk4, (char *) tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+
+	TEST_ASSERT_FALSE(resize_inode_block(&fs1));
+	free(tmp);
+}
+
 TEST_GROUP_RUNNER(fs_tests)
 {
 	RUN_TEST_CASE(fs_tests, fs_mkfs_test);
@@ -870,4 +900,5 @@ TEST_GROUP_RUNNER(fs_tests)
 	RUN_TEST_CASE(fs_tests, defragment_test);
 	RUN_TEST_CASE(fs_tests, defragment_test2);
 	RUN_TEST_CASE(fs_tests, resize_inode_block_test);
+	RUN_TEST_CASE(fs_tests, resize_inode_block_test2);
 }

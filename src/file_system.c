@@ -521,9 +521,12 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 bool resize_inode_block(struct FILE_SYSTEM *fs)
 {
 	uint8_t *al_tab, *tmp_sec, *in_tab;
-	uint tmp, in_max, bits;
+	uint tmp, bits, at_size;
 
-	al_tab = malloc(fs->sector_size * fs->alloc_table_size);
+	bits = div_up(8, fs->inode_sec);
+	at_size = fs->sector_size * fs->alloc_table_size;
+
+	al_tab = malloc(at_size);
 	disk_read(fs->disk, (char *) al_tab, fs->alloc_table,
 		fs->alloc_table_size);
 
@@ -532,35 +535,30 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 		fs->inode_alloc_table_size);
 
 	tmp = fs->sector_count - (fs->inode_block + fs->inode_block_size);
-	in_max = div_up(fs->inode_max, 8);
+	tmp -= bits;
 
-	bits = first_free_bits(al_tab[tmp/8]);
-	if (bits != (tmp % 8)) {
+	if (!check_seq(al_tab, tmp, bits)) {
 		free(al_tab);
 		free(in_tab);
 		return false;
 	}
 
-	bits = (last_free_bits(al_tab[(tmp/8) - 1]));
-	if (bits < (8 - (tmp % 8))) {
-		free(al_tab);
-		free(in_tab);
-		return false;
-	}
+	/* TODO: Recover the wasted inode space */
+	write_seq(al_tab, tmp, bits);
 
-	al_tab[(tmp/8) - 1] |= al_tab[tmp/8];
-	al_tab[tmp/8] = 0xFF;
-	in_tab[in_max] = 0x00;
+	in_tab[fs->inode_max / 8] = 0x00;
 
-	disk_write(fs->disk, (char *) al_tab, fs->alloc_table, fs->alloc_table_size);
+	disk_write(fs->disk, (char *) al_tab, fs->alloc_table,
+		fs->alloc_table_size);
 	free(al_tab);
 
-	disk_write(fs->disk, (char *) in_tab, fs->inode_alloc_table, fs->inode_alloc_table_size);
+	disk_write(fs->disk, (char *) in_tab, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
 	free(in_tab);
 
 	tmp_sec = malloc(fs->sector_size);
-	fs->inode_block_size += 8;
-	fs->inode_max = 8 * (fs->sector_size / sizeof(struct INODE));
+	fs->inode_block_size += bits;
+	fs->inode_max += 8;
 	memcpy(tmp_sec, fs, sizeof(struct FILE_SYSTEM));
 	disk_write(fs->disk, (char *) tmp_sec, 0, 1);
 	free(tmp_sec);

@@ -165,6 +165,51 @@ void write_seq(uint8_t *table, uint index, uint length)
 	}
 }
 
+bool check_seq(uint8_t *table, uint index, uint length)
+{
+	uint tmp, startpadding, i, start_byte, end_byte, byte_length;
+	uint8_t tmp_byte, *seq;
+
+	start_byte = index / 8;
+	tmp = length;
+	startpadding = 8 - (index % 8);
+	end_byte = start_byte + ((length + (index % 8)) / 8);
+	byte_length = end_byte - start_byte;
+	seq = malloc(byte_length + 1);
+
+	/* Start byte */
+	if (tmp > startpadding) {
+		tmp_byte = 0xFF >> (8 - startpadding);
+		tmp -= startpadding;
+	} else {
+		tmp_byte = 0xFF << (8 - tmp);
+		tmp_byte = tmp_byte >> (8 - startpadding);
+		tmp = 0;
+	}
+	seq[0] = tmp_byte;
+
+	for (i = 1; i <= byte_length; ++i) {
+		if (i == byte_length) {
+			tmp_byte = 0xFF << (8 - tmp);
+			seq[i] = tmp_byte;
+		} else {
+			seq[i] = 0xFF;
+			tmp -= 8;
+		}
+	}
+
+	for (i = 0; i <= byte_length; ++i) {
+		if (seq[i] & table[i + start_byte]) {
+			free(seq);
+			return false;
+		}
+	}
+
+	free(seq);
+	return true;
+}
+
+
 void delete_seq(uint8_t *table, uint index, uint length)
 {
 	uint tmp, startpadding, i, start_byte, end_byte;
