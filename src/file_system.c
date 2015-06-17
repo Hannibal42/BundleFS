@@ -7,8 +7,8 @@ bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file,
 	uint size);
 uint inodes_used(struct FILE_SYSTEM *fs);
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
-bool resize_inode_block(struct FILE_SYSTEM *fs);
 void read_inode(struct FILE_SYSTEM *fs, struct INODE *file);
+bool resize_inode_block(struct FILE_SYSTEM *fs);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {

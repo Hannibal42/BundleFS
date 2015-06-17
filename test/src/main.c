@@ -8,6 +8,8 @@ int main(void)
 	RUN_TEST_GROUP(utility_tests);
 	printf("\n---------------------fs_tests---------------------\n");
 	RUN_TEST_GROUP(fs_tests);
+	printf("\n---------------------tasks_tests---------------------\n");
+	RUN_TEST_GROUP(tasks_tests);
 	printf("\n--------------------system_tests-------------------\n");
 	RUN_TEST_GROUP(system_tests);
 	printf("\n");
