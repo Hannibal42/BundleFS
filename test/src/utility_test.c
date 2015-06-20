@@ -3,7 +3,7 @@
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
 uint8_t *data1, *data2, *data3;
 
-extern int find_sequence_byte(uint8_t byte, uint length);
+extern int find_seq_byte(uint8_t byte, uint length);
 
 TEST_GROUP(utility_tests);
 
@@ -79,32 +79,32 @@ TEST(utility_tests, checksum_check_test)
 	free(tmp);
 }
 
-TEST(utility_tests, find_sequence_small_test)
+TEST(utility_tests, find_seq_small_test)
 {
 
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table1, 64, 10), -1);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table1, 64, 10), -1);
 	table1[0] = 0x87;
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table1, 64, 4), 1);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table1, 64, 4), 1);
 	table1[1] = 0x08;
 	table1[2] = 0x0F;
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table1, 64, 5), 13);
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table1, 64, 6), 13);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table1, 64, 5), 13);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table1, 64, 6), 13);
 	table1[3] = 0x00;
 	table1[4] = 0x01;
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table1, 64, 8), 24);
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table1, 64, 8), 24);
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table1, 64, 1), 1);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table1, 64, 8), 24);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table1, 64, 8), 24);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table1, 64, 1), 1);
 
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table2, 256, 10), -1);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table2, 256, 10), -1);
 	table2[0] = 0x40;
 	table2[1] = 0x00;
 	table2[2] = 0x00;
 	table2[3] = 0x00;
 	table2[4] = 0x00;
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table2, 256, 5), 2);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table2, 256, 5), 2);
 
 	table2[0] = 0x07;
-	TEST_ASSERT_EQUAL_INT(find_sequence_small(table2, 1, 5), 0);
+	TEST_ASSERT_EQUAL_INT(find_seq_small(table2, 1, 5), 0);
 }
 
 TEST(utility_tests, popcount_test)
@@ -187,32 +187,32 @@ TEST(utility_tests, find_bit_test)
 	TEST_ASSERT_EQUAL_INT(find_bit(table2, 256), 76);
 }
 
-TEST(utility_tests, find_sequence_test)
+TEST(utility_tests, find_seq_test)
 {
 
 	table1[10] = 0x78;
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 1), 80);
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 2), 85);
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 3), 85);
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 4), -1);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 1), 80);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 2), 85);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 3), 85);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 4), -1);
 
 	table1[11] = 0x7F;
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 4), 85);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 4), 85);
 
 	table1[4] = 0xF0;
 	table1[5] = 0x00;
 	table1[6] = 0x0F;
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 14), 36);
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 15), 36);
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 17), -1);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 14), 36);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 15), 36);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 17), -1);
 
-	TEST_ASSERT_EQUAL_INT(find_sequence(table2_empty, 256, 256), 0);
-	TEST_ASSERT_EQUAL_INT(find_sequence(table2_empty, 256, 50000), -1);
+	TEST_ASSERT_EQUAL_INT(find_seq(table2_empty, 256, 256), 0);
+	TEST_ASSERT_EQUAL_INT(find_seq(table2_empty, 256, 50000), -1);
 
 	table1[4] = 0x80;
 	table1[5] = 0x00;
 	table1[6] = 0x10;
-	TEST_ASSERT_EQUAL_INT(find_sequence(table1, 64, 15), 33);
+	TEST_ASSERT_EQUAL_INT(find_seq(table1, 64, 15), 33);
 }
 
 TEST(utility_tests, write_seq_test)
@@ -328,11 +328,11 @@ TEST(utility_tests, quick_sort_inodes_test)
 		inodes2[i].location);
 }
 
-TEST(utility_tests, find_sequence_byte_test)
+TEST(utility_tests, find_seq_byte_test)
 {
-	TEST_ASSERT_EQUAL(0, find_sequence_byte(0x03, 6));
-	TEST_ASSERT_EQUAL(1, find_sequence_byte(0x80, 6));
-	TEST_ASSERT_EQUAL(0, find_sequence_byte(0x07, 5));
+	TEST_ASSERT_EQUAL(0, find_seq_byte(0x03, 6));
+	TEST_ASSERT_EQUAL(1, find_seq_byte(0x80, 6));
+	TEST_ASSERT_EQUAL(0, find_seq_byte(0x07, 5));
 }
 
 TEST(utility_tests, check_seq_test)
@@ -367,14 +367,14 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, write_bit_test);
 	RUN_TEST_CASE(utility_tests, write_seq_test);
 	RUN_TEST_CASE(utility_tests, delete_seq_test);
-	RUN_TEST_CASE(utility_tests, find_sequence_test);
+	RUN_TEST_CASE(utility_tests, find_seq_test);
 	RUN_TEST_CASE(utility_tests, find_bit_test);
 	RUN_TEST_CASE(utility_tests, get_free_bit_test);
 	RUN_TEST_CASE(utility_tests, last_free_bits_test);
 	RUN_TEST_CASE(utility_tests, popcount_test);
-	RUN_TEST_CASE(utility_tests, find_sequence_small_test);
+	RUN_TEST_CASE(utility_tests, find_seq_small_test);
 	RUN_TEST_CASE(utility_tests, checksum_check_test);
 	RUN_TEST_CASE(utility_tests, quick_sort_inodes_test);
-	RUN_TEST_CASE(utility_tests, find_sequence_byte_test);
+	RUN_TEST_CASE(utility_tests, find_seq_byte_test);
 	RUN_TEST_CASE(utility_tests, check_seq_test);
 }

@@ -40,10 +40,10 @@ int find_bit(const uint8_t *table, uint size)
 		if ((table[i] & tmp_byte) == 0x00)
 			return (8 * i) + k;
 	}
-	return -1;/* This should never happen */
+	return -2;/* This should never happen */
 }
 
-int find_sequence_byte(uint8_t byte, uint length)
+int find_seq_byte(uint8_t byte, uint length)
 {
 	uint i, tmp;
 	uint8_t tmp_byte;
@@ -63,12 +63,12 @@ int find_sequence_byte(uint8_t byte, uint length)
 }
 
 /* lenght must be < 9 for this, and the table must be > 0*/
-int find_sequence_small(const uint8_t *table, uint table_size, uint length)
+int find_seq_small(const uint8_t *table, uint table_size, uint length)
 {
 	uint i;
 	int tmp;
 
-	tmp = find_sequence_byte(table[0], length);
+	tmp = find_seq_byte(table[0], length);
 	if (tmp >= 0)
 		return tmp;
 	tmp = last_free_bits(table[0]);
@@ -82,7 +82,7 @@ int find_sequence_small(const uint8_t *table, uint table_size, uint length)
 		tmp += first_free_bits(table[i]);
 		if (tmp >= length)
 			return i * 8 - last_free_bits(table[i-1]);
-		tmp = find_sequence_byte(table[i], length);
+		tmp = find_seq_byte(table[i], length);
 		if (tmp > 0)
 			return i * 8 + tmp;
 		tmp = last_free_bits(table[i]);
@@ -90,13 +90,13 @@ int find_sequence_small(const uint8_t *table, uint table_size, uint length)
 	return -1;
 }
 
-int find_sequence(const uint8_t *table, uint table_size, uint length)
+int find_seq(const uint8_t *table, uint table_size, uint length)
 {
 	int tmp;
 	uint i, start;
 
 	if (length < 9)
-		return find_sequence_small(table, table_size, length);
+		return find_seq_small(table, table_size, length);
 
 	tmp = 0;
 	start = 0;
@@ -135,21 +135,21 @@ int get_free_bit(uint8_t index, uint8_t byte)
 
 void write_seq(uint8_t *table, uint index, uint length)
 {
-	uint tmp, startpadding, i, start_byte, end_byte;
+	uint tmp, start_pad, i, start_byte, end_byte;
 	uint8_t tmp_byte;
 
 	start_byte = index / 8;
 	tmp = length;
-	startpadding = 8 - (index % 8);
+	start_pad = 8 - (index % 8);
 	end_byte = start_byte + ((length + (index % 8)) / 8);
 
 	/* Start byte */
-	if (tmp > startpadding) {
-		tmp_byte = 0xFF >> (8 - startpadding);
-		tmp -= startpadding;
+	if (tmp > start_pad) {
+		tmp_byte = 0xFF >> (8 - start_pad);
+		tmp -= start_pad;
 	} else {
 		tmp_byte = 0xFF << (8 - tmp);
-		tmp_byte = tmp_byte >> (8 - startpadding);
+		tmp_byte = tmp_byte >> (8 - start_pad);
 		tmp = 0;
 	}
 	table[start_byte] |= tmp_byte;
@@ -167,23 +167,23 @@ void write_seq(uint8_t *table, uint index, uint length)
 
 bool check_seq(uint8_t *table, uint index, uint length)
 {
-	uint tmp, startpadding, i, start_byte, end_byte, byte_length;
+	uint tmp, start_pad, i, start_byte, end_byte, byte_length;
 	uint8_t tmp_byte, *seq;
 
 	start_byte = index / 8;
 	tmp = length;
-	startpadding = 8 - (index % 8);
+	start_pad = 8 - (index % 8);
 	end_byte = start_byte + ((length + (index % 8)) / 8);
 	byte_length = end_byte - start_byte;
 	seq = malloc(byte_length + 1);
 
 	/* Start byte */
-	if (tmp > startpadding) {
-		tmp_byte = 0xFF >> (8 - startpadding);
-		tmp -= startpadding;
+	if (tmp > start_pad) {
+		tmp_byte = 0xFF >> (8 - start_pad);
+		tmp -= start_pad;
 	} else {
 		tmp_byte = 0xFF << (8 - tmp);
-		tmp_byte = tmp_byte >> (8 - startpadding);
+		tmp_byte = tmp_byte >> (8 - start_pad);
 		tmp = 0;
 	}
 	seq[0] = tmp_byte;
@@ -212,21 +212,21 @@ bool check_seq(uint8_t *table, uint index, uint length)
 
 void delete_seq(uint8_t *table, uint index, uint length)
 {
-	uint tmp, startpadding, i, start_byte, end_byte;
+	uint tmp, start_pad, i, start_byte, end_byte;
 	uint8_t tmp_byte;
 
 	start_byte = index / 8;
 	tmp = length;
-	startpadding = 8 - (index % 8);
+	start_pad = 8 - (index % 8);
 	end_byte = start_byte + ((length + (index % 8)) / 8);
 
 	/* Start byte */
-	if (tmp > startpadding) {
-		tmp_byte = 0xFF << startpadding;
-		tmp -= startpadding;
+	if (tmp > start_pad) {
+		tmp_byte = 0xFF << start_pad;
+		tmp -= start_pad;
 	} else {
-		tmp_byte = 0xFF << startpadding;
-		tmp = 8 - (startpadding - tmp);
+		tmp_byte = 0xFF << start_pad;
+		tmp = 8 - (start_pad - tmp);
 		tmp_byte |= 0xFF >> tmp;
 		tmp = 0;
 	}
@@ -304,14 +304,14 @@ void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
 bool checksum_check(const uint8_t *buffer, const struct INODE *file,
 	uint sector_size)
 {
-	uint i, sector_count_file, sector_count_check, fbc,
+	uint i, fil_cnt, che_cnt, fbc,
 	 cbc;
 	uint8_t *tmp;
 
-	sector_count_file = div_up(file->size, sector_size);
-	fbc = sector_count_file * sector_size;
-	sector_count_check = div_up(file->check_size, sector_size);
-	cbc = sector_count_check * sector_size;
+	fil_cnt = div_up(file->size, sector_size);
+	fbc = fil_cnt * sector_size;
+	che_cnt = div_up(file->check_size, sector_size);
+	cbc = che_cnt * sector_size;
 
 	tmp = malloc(cbc);
 	checksum(buffer, fbc, tmp, file->check_size);
@@ -341,4 +341,128 @@ int cmp_INODES(const void *a, const void *b)
 void quicksort_inodes(struct INODE *inodes, int nitems)
 {
 	qsort(inodes, nitems, sizeof(struct INODE), cmp_INODES);
+}
+
+/* Finds the first inode that can be deleted and returns that inode*/
+bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
+{
+	uint i, tmp;
+	struct INODE *inodes;
+
+	tmp = inodes_used(fs);
+	inodes = malloc(tmp * sizeof(struct INODE));
+	load_inodes(fs, inodes);
+
+	for (i = 0; i < tmp; ++i) {
+		if (inodes[i].size >= size) {
+			if (!inodes[i].custody || isNotValid(&inodes[i])) {
+				memcpy(file, &inodes[i], sizeof(struct INODE));
+				free(inodes);
+				return true;
+			}
+		}
+	}
+	free(inodes);
+	return false;
+}
+
+bool isNotValid(struct INODE *inode)
+{
+	uint t;
+	/* TODO: Is the TTL a date or just how long the bundle lives? */
+	t = (uint) time(NULL);
+
+	return t > inode->time_to_live;
+}
+
+/* TODO: Make a test */
+/* file has to have the right offset of the inode you want to load */
+void read_inode(struct FILE_SYSTEM *fs, struct INODE *file)
+{
+	struct INODE *tmp;
+	uint sec_off, ino_off, divisor;
+
+	divisor = fs->sector_size / sizeof(struct INODE);
+
+	sec_off = file->inode_offset;
+	ino_off = divisor - (sec_off % divisor) - 1;
+	sec_off /= divisor;
+	sec_off += fs->inode_block;
+
+	tmp = malloc(fs->sector_size);
+	disk_read(fs->disk, (char *) tmp, sec_off, 1);
+
+	memcpy(file, &tmp[ino_off], sizeof(struct INODE));
+
+	free(tmp);
+}
+
+void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
+{
+	struct INODE *tmp;
+	uint sec_off, ino_off, divisor;
+
+	divisor = fs->sector_size / sizeof(struct INODE);
+
+	sec_off = file->inode_offset;
+	ino_off = divisor - (sec_off % divisor) - 1;
+	sec_off /= divisor;
+	sec_off += fs->inode_block;
+
+	tmp = malloc(fs->sector_size);
+	disk_read(fs->disk, (char *) tmp, sec_off, 1);
+
+	memcpy(&tmp[ino_off], file, sizeof(struct INODE));
+
+	disk_write(fs->disk, (char *) tmp, sec_off, 1);
+	free(tmp);
+}
+
+uint inodes_used(struct FILE_SYSTEM *fs)
+{
+	uint8_t *tmp;
+	uint i, size, ret_val;
+
+	size = fs->sector_size * fs->inode_alloc_table_size;
+	tmp = malloc(size);
+
+	ret_val = 0;
+	disk_read(fs->disk, (char *) tmp, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
+	for (i = 0; i < size; ++i)
+		ret_val += 8 - popcount(tmp[i]);
+
+	free(tmp);
+	ret_val = fs->inode_max - ret_val;
+	return ret_val;
+}
+
+/* This needs to be called with a buffer that can hold all inodes! */
+void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
+{
+	uint i, k, r, size;
+	uint8_t *tmp_sec, *ino_tab, tmp_byte;
+
+	tmp_sec = malloc(fs->sector_size);
+	size = fs->inode_alloc_table_size * fs->sector_size;
+	ino_tab = malloc(size);
+
+	disk_read(fs->disk, (char *) ino_tab, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
+
+	r = 0;
+	for (i = 0; i < (fs->inode_max / 8); ++i) {
+		for (k = 0; k < 8; ++k) {
+			tmp_byte = (0x80 >> k);
+			if (ino_tab[i] & tmp_byte) {
+				tmp_byte = i * 8 + k;
+				buffer[r].inode_offset = tmp_byte;
+				read_inode(fs, &buffer[r]);
+				++r;
+			}
+		}
+	}
+
+	free(ino_tab);
+	free(tmp_sec);
 }

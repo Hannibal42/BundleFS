@@ -9,11 +9,11 @@ uint8_t *data1, *data2, *data3;
 extern bool free_disk_space(struct FILE_SYSTEM *fs,
 	uint size);
 extern bool isNotValid(struct INODE *inode);
-extern bool find_first_IN_length(struct FILE_SYSTEM *fs, struct INODE *file,
+extern bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file,
 	uint size);
 extern void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 extern uint inodes_used(struct FILE_SYSTEM *fs);
-extern void load_inodes_all_full(struct FILE_SYSTEM *fs, struct INODE *buffer);
+extern void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer);
 extern void defragment(struct FILE_SYSTEM *fs);
 extern bool resize_inode_block(struct FILE_SYSTEM *fs);
 
@@ -226,18 +226,18 @@ TEST(fs_tests, fs_create_test)
 	free(in_tab);
 }
 
-TEST(fs_tests, find_first_IN_length_test)
+TEST(fs_tests, find_ino_length_test)
 {
 	struct INODE tmp;
 
 	fs_mount(disk1, &fs1);
 
 	fs_create(&fs1, &in1, 128, 100, false);
-	TEST_ASSERT_TRUE(find_first_IN_length(&fs1, &tmp, 128));
+	TEST_ASSERT_TRUE(find_ino_length(&fs1, &tmp, 128));
 	fs_create(&fs1, &in1, 128, 100, true);
 	fs_create(&fs1, &in1, 64, 100, false);
 	fs_create(&fs1, &in1, 256, 100, false);
-	TEST_ASSERT_TRUE(find_first_IN_length(&fs1, &tmp, 256));
+	TEST_ASSERT_TRUE(find_ino_length(&fs1, &tmp, 256));
 	TEST_ASSERT_EQUAL(in1.id, tmp.id);
 }
 
@@ -646,7 +646,7 @@ TEST(fs_tests, inodes_used_test)
 	}
 }
 
-TEST(fs_tests, load_inodes_all_full_test)
+TEST(fs_tests, load_inodes_test)
 {
 	uint i;
 	struct INODE *tmp;
@@ -658,7 +658,7 @@ TEST(fs_tests, load_inodes_all_full_test)
 		fs_create(&fs1, &inodes[i], 1, 1, true);
 
 	tmp = malloc(sizeof(struct INODE) * inodes_used(&fs1));
-	load_inodes_all_full(&fs1, tmp);
+	load_inodes(&fs1, tmp);
 
 	for (i = 0; i < 3; ++i)
 		TEST_ASSERT_EQUAL_UINT(tmp[i].id, inodes[i].id);
@@ -667,7 +667,7 @@ TEST(fs_tests, load_inodes_all_full_test)
 	fs_delete(&fs1, &inodes[1]);
 
 	tmp = malloc(sizeof(struct INODE) * inodes_used(&fs1));
-	load_inodes_all_full(&fs1, tmp);
+	load_inodes(&fs1, tmp);
 
 	TEST_ASSERT_EQUAL_UINT(tmp[0].id, inodes[0].id);
 	TEST_ASSERT_EQUAL_UINT(tmp[1].id, inodes[2].id);
@@ -756,7 +756,7 @@ TEST_GROUP_RUNNER(fs_tests)
 	RUN_TEST_CASE(fs_tests, fs_mount_test);
 	RUN_TEST_CASE(fs_tests, free_disk_space_test);
 	RUN_TEST_CASE(fs_tests, isNotValid_test);
-	RUN_TEST_CASE(fs_tests, find_first_IN_length_test);
+	RUN_TEST_CASE(fs_tests, find_ino_length_test);
 	RUN_TEST_CASE(fs_tests, fs_getfree_test);
 	RUN_TEST_CASE(fs_tests, fs_write_test);
 	RUN_TEST_CASE(fs_tests, fs_read_test);
@@ -767,7 +767,7 @@ TEST_GROUP_RUNNER(fs_tests)
 	RUN_TEST_CASE(fs_tests, fs_create_test);
 	RUN_TEST_CASE(fs_tests, write_inode_test);
 	RUN_TEST_CASE(fs_tests, inodes_used_test);
-	RUN_TEST_CASE(fs_tests, load_inodes_all_full_test);
+	RUN_TEST_CASE(fs_tests, load_inodes_test);
 	RUN_TEST_CASE(fs_tests, resize_inode_block_test);
 	RUN_TEST_CASE(fs_tests, resize_inode_block_test2);
 }

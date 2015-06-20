@@ -9,16 +9,6 @@
 #include "metadata.h"
 #include "utility.h"
 
-/* Standart start point for the fs */
-#define FS_START 0 /* TODO: Remove? */
-
-/* Modes for fs_seek */
-enum SEEK_MODE {
-	CUR,
-	SET,
-	END
-};
-
 /* Results of the file functions */
 enum FSRESULT {
 	FS_OK,

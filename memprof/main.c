@@ -50,12 +50,13 @@ int main(void)
 	printf("Delete Invalid Inodes \n");
 	delete_invalid_inodes(&fs);
 
+	/*
 	for (i = 0; i < 100; ++i) {
 		fil.id = i;
 		fs_create(&fs, &fil,2 * fs.sector_size, 1, true);
 		fs_write(&fs, &fil, (char *) buf);
 		fs_read(&fs, &fil, (char *) buf,2 * fs.sector_size);
-	}
+	}*/
 
 	return 0;
 }
