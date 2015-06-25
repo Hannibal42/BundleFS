@@ -60,7 +60,6 @@ TEST(utility_tests, checksum_check_test)
 	tmp = malloc(192);
 
 	file.size = 128;
-	file.check_size = 64;
 	checksum(data1, 128, check, 64);
 
 	for (i = 0; i < 128; ++i)
@@ -72,7 +71,6 @@ TEST(utility_tests, checksum_check_test)
 	TEST_ASSERT_TRUE(checksum_check(tmp, check, &file, 64));
 
 	file.size = 64;
-	file.check_size = 16;
 	TEST_ASSERT_FALSE(checksum_check(data1, check, &file, 16));
 
 	free(check);

@@ -24,7 +24,7 @@ void defragment(struct FILE_SYSTEM *fs)
 	k = fs->sector_count;
 	for (i = ino_cnt - 1; i >= 0; --i) {
 		sec_cnt = div_up(inodes[i].size, fs->sector_size);
-		sec_cnt += div_up(inodes[i].check_size, fs->sector_size);
+		//TODO: Align to the new check size
 
 		buffer = malloc(sec_cnt * fs->sector_size);
 		disk_read(fs->disk, (char *) buffer, inodes[i].location,
@@ -123,7 +123,7 @@ void restore_fs(struct FILE_SYSTEM *fs)
 
 	for (i = 0; i < ino_cnt; i++) {
 		ino_size = div_up(inodes[i].size, fs->sector_size);
-		ino_size += div_up(inodes[i].check_size, fs->sector_size);
+		//TODO: The calculation needs to be alligned to the new check size
 		tmp = fs->sector_count - inodes[i].location - ino_size;
 		write_seq(all_tab, tmp, ino_size);
 	}

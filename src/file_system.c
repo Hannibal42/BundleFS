@@ -137,7 +137,7 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	disk_read(fs->disk, (char *) all_tab, fs->alloc_table,
 		fs->alloc_table_size);
 	bit_length = div_up(file->size, fs->sector_size);
-	bit_length += div_up(file->check_size, fs->sector_size);
+	//TODO: calculate the new checksize;
 	tmp = fs->sector_count - (file->location + bit_length);
 	delete_seq(all_tab, tmp, bit_length);
 
@@ -180,15 +180,17 @@ enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
 
 	memcpy(buffer, SEC_BUFFER, file->size % fs->sector_size);
 
-	check_count = div_up(file->check_size, fs->sector_size);
-	tmp = malloc(check_count);
-	disk_read(fs->disk, (char *) tmp, file->location + sector_count, check_count);
-	if (!checksum_check(buffer, tmp, file, fs->sector_size)) {
-		free(tmp);
-		return FS_CHECK_ERROR;
-	}
+	//TODO: Read with new check_size;
+	//check_count = div_up(file->check_size, fs->sector_size);
+	//
+	//tmp = malloc(check_count);
+	//disk_read(fs->disk, (char *) tmp, file->location + sector_count, check_count);
+	//if (!checksum_check(buffer, tmp, file, fs->sector_size)) {
+	//	free(tmp);
+	//	return FS_CHECK_ERROR;
+	//}
 
-	free(tmp);
+	//free(tmp);
 	return FS_OK;
 }
 
@@ -201,12 +203,13 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 
 	fil_sec = div_up(file->size, fs->sector_size);
 	pad = file->size % fs->sector_size;
-	che_sec = div_up(file->check_size, fs->sector_size);
+	//TODO: Rebuild
+	/*che_sec = div_up(file->check_size, fs->sector_size);
 
-	che_buf = malloc(che_sec * fs->sector_size);
-	checksum((uint8_t *) buffer, file->size, che_buf, file->check_size);
-
-	/* Makes a padding if the file does not fit the sectors */
+	//che_buf = malloc(che_sec * fs->sector_size);
+	//checksum((uint8_t *) buffer, file->size, che_buf, file->check_size);
+	*/
+	/* Makes a padding if the file does not fit the sectors */ /*
 	if (pad) {
 		sec_buf = malloc(fs->sector_size);
 		memcpy(sec_buf, &buffer[file->size - pad], pad);
@@ -219,7 +222,7 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 
 	disk_write(fs->disk, (char *) che_buf, file->location + fil_sec,
 		che_sec);
-	free(che_buf);
+	free(che_buf); */
 	return FS_OK;
 }
 
@@ -289,7 +292,8 @@ unsigned long size, uint time_to_live, bool custody)
 
 	check_size = checksum_size(size);
 	bit_cnt = div_up(size, fs->sector_size);
-	bit_cnt += div_up(check_size, fs->sector_size);
+	//TODO: No longer needed
+	//bit_cnt += div_up(check_size, fs->sector_size);
 	all_tab  = malloc(fs->alloc_table_size * fs->sector_size);
 	ino_tab  = malloc(fs->inode_alloc_table_size * fs->sector_size);
 
@@ -342,7 +346,6 @@ unsigned long size, uint time_to_live, bool custody)
 	write_bit(ino_tab, ino_off, true);
 
 	file->size = size;
-	file->check_size = check_size;
 	file->location = fs->sector_count - all_off - bit_cnt;
 	file->custody = custody;
 	file->time_to_live = time_to_live;

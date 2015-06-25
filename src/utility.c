@@ -301,6 +301,23 @@ void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
 	free(tmp);
 }
 
+uint calc_fake_crc(const uint value)
+{
+	static uint crc;
+
+	crc ^= value;
+	return crc;
+}
+
+void reset_fake_crc(void)
+{
+	uint tmp;
+
+	tmp = calc_fake_crc(0x00);
+	calc_fake_crc(tmp);
+}
+
+
 bool checksum_check(const uint8_t *buffer, const uint8_t *check,
 	const struct INODE *file, uint sector_size)
 {
@@ -310,18 +327,18 @@ bool checksum_check(const uint8_t *buffer, const uint8_t *check,
 
 	fil_cnt = div_up(file->size, sector_size);
 	fbc = fil_cnt * sector_size;
-	che_cnt = div_up(file->check_size, sector_size);
-	cbc = che_cnt * sector_size;
+	//che_cnt = div_up(file->check_size, sector_size);
+	//cbc = che_cnt * sector_size;
 
 	tmp = malloc(cbc);
-	checksum(buffer, fbc, tmp, file->check_size);
+	//cecksum(buffer, fbc, tmp, file->check_size);
 
-	for (i = 0; i < file->check_size; ++i) {
-		if (check[i] != tmp[i]) {
-			free(tmp);
-			return false;
-		}
-	}
+	//for (i = 0; i < file->check_size; ++i) {
+	//	if (check[i] != tmp[i]) {
+	//		free(tmp);
+	//		return false;
+	//	}
+	//}
 
 	free(tmp);
 	return true;

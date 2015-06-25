@@ -29,15 +29,16 @@ struct FILE_SYSTEM {
 
 /* File information */
 struct INODE {
-	/* unique id in the file system */
-	uint id;
-	uint size;
-	uint check_size;
-	/* Pointer to the start sector of the file */
-	uint location;
-	uint inode_offset;
 	/* The custody of the bundle */
 	bool custody;
+	/* unique id in the file system */
+	uint id;
+	/* The size of the file in byte */
+	uint size;
+	/* Pointer to the start sector of the file */
+	uint location;
+	/* Offset to the inode location */
+	uint inode_offset;
 	/* The TTL of the bundle */
 	uint time_to_live;
 };
