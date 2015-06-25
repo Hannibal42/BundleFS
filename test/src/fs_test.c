@@ -1,5 +1,7 @@
 #include "fs_test.h"
 
+#include "print_stuff.h"
+
 struct disk *disk1, *disk2, *disk3, *disk4;
 struct FILE_SYSTEM fs1, fs2, fs3;
 struct INODE in1, in2, in3, in4;
@@ -190,7 +192,7 @@ TEST(fs_tests, fs_create_test)
 		res = fs_create(&fs1, &inodes[0], 8 * fs1.sector_size,
 			tmp_time, true);
 		tmp -= 8;
-		if (tmp > 8) {
+		if (tmp > 0) {
 			disk_read(disk1, (char *) al_tab, fs1.alloc_table,
 				fs1.alloc_table_size);
 			TEST_ASSERT_EQUAL_HEX8(al_tab[i], 0xFF);
@@ -232,7 +234,7 @@ TEST(fs_tests, find_ino_length_test)
 
 TEST(fs_tests, fs_write_test)
 {
-	int i;
+	int i, k;
 	uint8_t *buffer, *buffer2;
 	struct INODE *tmp;
 	enum FSRESULT ret_val;
@@ -251,8 +253,13 @@ TEST(fs_tests, fs_write_test)
 	TEST_ASSERT_EQUAL(FS_OK, ret_val);
 	disk_read(disk1, (char *) buffer2, tmp->location, 2);
 
-	for (i = 0; i < 100; ++i)
-		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[i]);
+	k = 0;
+	for (i = 0; i < 100; ++i) {
+		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[k]);
+		if (k == 59)
+			k = 63;
+		++k;
+	}
 
 	free(buffer2);
 	free(buffer);
@@ -271,8 +278,13 @@ TEST(fs_tests, fs_write_test)
 	TEST_ASSERT_EQUAL(FS_OK, ret_val);
 	disk_read(disk1, (char *) buffer2, tmp->location, 16);
 
-	for (i = 0; i < 100; ++i)
-		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[i]);
+	k = 0;
+	for (i = 0; i < 100; ++i) {
+		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[k]);
+		if (k == 59)
+			k = 63;
+		++k;
+	}
 
 	free(buffer2);
 	free(buffer);
@@ -301,6 +313,7 @@ TEST(fs_tests, fs_read_test)
 	TEST_ASSERT_EQUAL(FS_OK, ret_val);
 	for (i = 0; i < 100; ++i)
 		TEST_ASSERT_EQUAL_HEX8(buffer[i], buffer2[i]);
+
 	free(buffer2);
 	free(buffer);
 
@@ -364,7 +377,7 @@ TEST(fs_tests, fs_delete_test2)
 
 TEST(fs_tests, fs_delete_test)
 {
-	uint8_t *buffer, offset, i;
+	uint8_t *buffer;
 	struct INODE *tmp;
 
 	tmp = malloc(sizeof(struct INODE));
@@ -382,14 +395,8 @@ TEST(fs_tests, fs_delete_test)
 	TEST_ASSERT_EQUAL(FS_OK, fs_delete(&fs1, &in2));
 	TEST_ASSERT_EQUAL(fs_open(&fs1, 2000, tmp), FS_ERROR);
 
-	offset = fs1.inode_block + in3.inode_offset;
 	fs_delete(&fs1, &in3);
 	buffer = malloc(fs1.sector_size);
-
-	disk_read(fs1.disk, (char *) buffer, offset, 1);
-
-	for (i = 0; i < fs1.sector_size; ++i)
-		TEST_ASSERT_EQUAL_HEX8(buffer[i], 0X00);
 
 	disk_read(fs1.disk, (char *) buffer, fs1.alloc_table, 1);
 
@@ -423,40 +430,6 @@ TEST(fs_tests, isNotValid_test)
 	for (i = 0; i < 3; ++i)
 		TEST_ASSERT_TRUE(isNotValid(&inodes[i]));
 	TEST_ASSERT_FALSE(isNotValid(&in4));
-}
-
-TEST(fs_tests, fs_close_test)
-{
-	uint8_t *buffer, i;
-	struct INODE *tmp;
-	struct INODE inodes[3] = {in1, in2, in3};
-
-	tmp = malloc(sizeof(struct INODE));
-
-	fs_mount(disk1, &fs1);
-	fs_close(&fs1, &in1);
-	fs_close(&fs1, &in2);
-	fs_close(&fs1, &in3);
-
-	buffer = malloc(fs1.inode_block_size * fs1.sector_size);
-	disk_read(disk1, (char *) buffer, fs1.inode_block,
-		fs1.inode_block_size);
-
-	for (i = 0; i < 3; ++i) {
-		memcpy(tmp, buffer, sizeof(struct INODE));
-		TEST_ASSERT_EQUAL_UINT(tmp->size, inodes[i].size);
-		TEST_ASSERT_EQUAL_UINT(tmp->id, inodes[i].id);
-		TEST_ASSERT_EQUAL_UINT(tmp->location, inodes[i].location);
-		TEST_ASSERT_EQUAL_UINT(tmp->inode_offset,
-			inodes[i].inode_offset);
-		TEST_ASSERT_EQUAL(tmp->custody, inodes[i].custody);
-		TEST_ASSERT_EQUAL_UINT(tmp->time_to_live,
-			inodes[i].time_to_live);
-		buffer += fs1.sector_size;
-	}
-	free(tmp);
-	buffer -= fs1.sector_size * 3;
-	free(buffer);
 }
 
 TEST(fs_tests, fs_open_test)
@@ -593,17 +566,23 @@ TEST(fs_tests, write_inode_test)
 
 	fs_mount(disk1, &fs1);
 
-	for (i = 0; i < 3; ++i) {
+	for (i = 0; i < 2; ++i) {
 		write_inode(&fs1, &inodes[i]);
 		tmp = malloc(fs1.sector_size);
-		disk_read(disk1, (char *) tmp, fs1.inode_block +
-			inodes[i].inode_offset, 1);
+		disk_read(disk1, (char *) tmp, fs1.inode_block, 1);
 		tmp_in = (struct INODE *) tmp;
 
-		TEST_ASSERT_EQUAL(tmp_in->location, inodes[i].location);
+		TEST_ASSERT_EQUAL(tmp_in[i].location, inodes[i].location);
+		free(tmp);
+	}
+		write_inode(&fs1, &inodes[i]);
+		tmp = malloc(fs1.sector_size);
+		disk_read(disk1, (char *) tmp, fs1.inode_block + 1, 1);
+		tmp_in = (struct INODE *) tmp;
+
+		TEST_ASSERT_EQUAL(tmp_in[0].location, inodes[2].location);
 		free(tmp);
 		tmp_in = NULL;
-	}
 }
 
 TEST(fs_tests, inodes_used_test)
@@ -670,20 +649,26 @@ TEST(fs_tests, resize_inode_block_test)
 	tmp = malloc(fs1.sector_size * fs1.alloc_table_size);
 	disk_read(disk1, (char *) tmp, fs1.alloc_table,
 		fs1.alloc_table_size);
-	TEST_ASSERT_EQUAL_HEX8(0xFF, tmp[6]);
-	TEST_ASSERT_EQUAL_HEX8(0x07, tmp[5]);
+	TEST_ASSERT_EQUAL_HEX8(0xFF, tmp[7]);
+	TEST_ASSERT_EQUAL_HEX8(0x07, tmp[6]);
+	TEST_ASSERT_EQUAL_HEX8(0x00, tmp[5]);
 	TEST_ASSERT_EQUAL_HEX8(0x00, tmp[4]);
 
-	TEST_ASSERT_EQUAL_UINT(16, fs1.inode_block_size);
+	TEST_ASSERT_EQUAL_UINT(8, fs1.inode_block_size);
 
 	tmp[5] = 0x87;
 	disk_write(disk1, (char *) tmp, fs1.alloc_table,
 		fs1.alloc_table_size);
 
+	TEST_ASSERT_TRUE(resize_inode_block(&fs1));
+
+	tmp[4] = 0x70;
+	disk_write(disk1, (char *) tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+
 	TEST_ASSERT_FALSE(resize_inode_block(&fs1));
 
-	tmp[5] = 0x07;
-	tmp[4] = 0xF8;
+	tmp[5] = 0x80;
 	disk_write(disk1, (char *) tmp, fs1.alloc_table,
 		fs1.alloc_table_size);
 
@@ -694,7 +679,7 @@ TEST(fs_tests, resize_inode_block_test)
 	disk_write(disk1, (char *) tmp, fs1.alloc_table,
 		fs1.alloc_table_size);
 
-	TEST_ASSERT_FALSE(resize_inode_block(&fs1));
+	TEST_ASSERT_TRUE(resize_inode_block(&fs1));
 	free(tmp);
 }
 
@@ -717,7 +702,7 @@ TEST(fs_tests, resize_inode_block_test2)
 	disk_read(disk4, (char *) tmp, fs1.alloc_table,
 		fs1.alloc_table_size);
 	TEST_ASSERT_EQUAL_HEX8(0xFF, tmp[16]);
-	TEST_ASSERT_EQUAL_HEX8(0x3F, tmp[15]);
+	TEST_ASSERT_EQUAL_HEX8(0x1F, tmp[15]);
 	TEST_ASSERT_EQUAL_HEX8(0x00, tmp[14]);
 
 	tmp[15] = 0xFF;
@@ -740,7 +725,6 @@ TEST_GROUP_RUNNER(fs_tests)
 	RUN_TEST_CASE(fs_tests, fs_read_test);
 	RUN_TEST_CASE(fs_tests, fs_delete_test);
 	RUN_TEST_CASE(fs_tests, fs_delete_test2);
-	RUN_TEST_CASE(fs_tests, fs_close_test);
 	RUN_TEST_CASE(fs_tests, fs_open_test);
 	RUN_TEST_CASE(fs_tests, fs_create_test);
 	RUN_TEST_CASE(fs_tests, write_inode_test);

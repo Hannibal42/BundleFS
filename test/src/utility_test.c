@@ -50,6 +50,7 @@ TEST_TEAR_DOWN(utility_tests)
 	free(data3);
 }
 
+/*
 TEST(utility_tests, checksum_check_test)
 {
 	uint i;
@@ -75,7 +76,7 @@ TEST(utility_tests, checksum_check_test)
 
 	free(check);
 	free(tmp);
-}
+}*/
 
 TEST(utility_tests, find_seq_small_test)
 {
@@ -360,6 +361,24 @@ TEST(utility_tests, check_seq_test)
 	TEST_ASSERT_TRUE(check_seq(table1, 160, 0));
 }
 
+TEST(utility_tests, calc_fake_crc_test)
+{
+	uint8_t tmp;
+
+	reset_fake_crc();
+	tmp = calc_fake_crc(0x00);
+	TEST_ASSERT_EQUAL_HEX8(0x00, tmp);
+
+	calc_fake_crc(0x70);
+	tmp = calc_fake_crc(0xAA);
+	TEST_ASSERT_EQUAL_HEX8(0xDA, tmp);
+	tmp = calc_fake_crc(0xFF);
+	TEST_ASSERT_EQUAL_HEX8(0x25, tmp);
+	reset_fake_crc();
+	tmp = calc_fake_crc(0x00);
+	TEST_ASSERT_EQUAL_HEX8(0x00, tmp);
+}
+
 TEST_GROUP_RUNNER(utility_tests)
 {
 	RUN_TEST_CASE(utility_tests, write_bit_test);
@@ -371,8 +390,9 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, last_free_bits_test);
 	RUN_TEST_CASE(utility_tests, popcount_test);
 	RUN_TEST_CASE(utility_tests, find_seq_small_test);
-	RUN_TEST_CASE(utility_tests, checksum_check_test);
+	//RUN_TEST_CASE(utility_tests, checksum_check_test);
 	RUN_TEST_CASE(utility_tests, quick_sort_inodes_test);
 	RUN_TEST_CASE(utility_tests, find_seq_byte_test);
 	RUN_TEST_CASE(utility_tests, check_seq_test);
+	RUN_TEST_CASE(utility_tests, calc_fake_crc_test);
 }

@@ -1,5 +1,7 @@
 #include "utility.h"
 
+#include "buffer.h"
+
 
 /*Writes the given bit into the allocation table*/
 void write_bit(uint8_t *table, uint index, bool bit_value)
@@ -276,29 +278,9 @@ int popcount(uint8_t byte)
 }
 
 /* TODO: Change this function for upcn*/
-uint checksum_size(uint size)
+uint check_size(void)
 {
-	return size / 8;
-}
-
-/* TODO: Change this function for upcn*/
-void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
-{
-	uint i;
-	uint8_t *tmp;
-
-	tmp = malloc(length);
-	memcpy(tmp, buffer, length);
-
-	while (length > size) {
-		for (i = 0; i < (length - 1); ++i)
-				tmp[i] = tmp[i] ^ tmp[i + 1];
-		length /= 2;
-	}
-
-	memcpy(result, tmp, size);
-
-	free(tmp);
+	return sizeof(uint);
 }
 
 uint calc_fake_crc(const uint value)
@@ -315,33 +297,6 @@ void reset_fake_crc(void)
 
 	tmp = calc_fake_crc(0x00);
 	calc_fake_crc(tmp);
-}
-
-
-bool checksum_check(const uint8_t *buffer, const uint8_t *check,
-	const struct INODE *file, uint sector_size)
-{
-	uint i, fil_cnt, che_cnt, fbc,
-	 cbc;
-	uint8_t *tmp;
-
-	fil_cnt = div_up(file->size, sector_size);
-	fbc = fil_cnt * sector_size;
-	//che_cnt = div_up(file->check_size, sector_size);
-	//cbc = che_cnt * sector_size;
-
-	tmp = malloc(cbc);
-	//cecksum(buffer, fbc, tmp, file->check_size);
-
-	//for (i = 0; i < file->check_size; ++i) {
-	//	if (check[i] != tmp[i]) {
-	//		free(tmp);
-	//		return false;
-	//	}
-	//}
-
-	free(tmp);
-	return true;
 }
 
 int cmp_INODES(const void *a, const void *b)
@@ -402,16 +357,14 @@ void read_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 	divisor = fs->sector_size / sizeof(struct INODE);
 
 	sec_off = file->inode_offset;
-	ino_off = divisor - (sec_off % divisor) - 1;
+	ino_off = sec_off % divisor;
 	sec_off /= divisor;
 	sec_off += fs->inode_block;
 
-	tmp = malloc(fs->sector_size);
-	disk_read(fs->disk, (char *) tmp, sec_off, 1);
+	disk_read(fs->disk, (char *) SEC_BUFFER, sec_off, 1);
 
+	tmp = (struct INODE *) SEC_BUFFER;
 	memcpy(file, &tmp[ino_off], sizeof(struct INODE));
-
-	free(tmp);
 }
 
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
@@ -422,34 +375,30 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 	divisor = fs->sector_size / sizeof(struct INODE);
 
 	sec_off = file->inode_offset;
-	ino_off = divisor - (sec_off % divisor) - 1;
+	ino_off = sec_off % divisor;
 	sec_off /= divisor;
 	sec_off += fs->inode_block;
 
-	tmp = malloc(fs->sector_size);
-	disk_read(fs->disk, (char *) tmp, sec_off, 1);
+	disk_read(fs->disk, (char *) SEC_BUFFER, sec_off, 1);
 
+	tmp = (struct INODE *) SEC_BUFFER;
 	memcpy(&tmp[ino_off], file, sizeof(struct INODE));
 
 	disk_write(fs->disk, (char *) tmp, sec_off, 1);
-	free(tmp);
 }
 
 uint inodes_used(struct FILE_SYSTEM *fs)
 {
-	uint8_t *tmp;
 	uint i, size, ret_val;
 
 	size = fs->sector_size * fs->inode_alloc_table_size;
-	tmp = malloc(size);
 
 	ret_val = 0;
-	disk_read(fs->disk, (char *) tmp, fs->inode_alloc_table,
+	disk_read(fs->disk, (char *) IT_BUFFER, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
 	for (i = 0; i < size; ++i)
-		ret_val += 8 - popcount(tmp[i]);
+		ret_val += 8 - popcount(IT_BUFFER[i]);
 
-	free(tmp);
 	ret_val = fs->inode_max - ret_val;
 	return ret_val;
 }
@@ -457,21 +406,17 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 /* This needs to be called with a buffer that can hold all inodes! */
 void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
-	uint i, k, r, size;
-	uint8_t *tmp_sec, *ino_tab, tmp_byte;
+	uint i, k, r;
+	uint8_t tmp_byte;
 
-	tmp_sec = malloc(fs->sector_size);
-	size = fs->inode_alloc_table_size * fs->sector_size;
-	ino_tab = malloc(size);
-
-	disk_read(fs->disk, (char *) ino_tab, fs->inode_alloc_table,
+	disk_read(fs->disk, (char *) IT_BUFFER, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
 
 	r = 0;
 	for (i = 0; i < (fs->inode_max / 8); ++i) {
 		for (k = 0; k < 8; ++k) {
 			tmp_byte = (0x80 >> k);
-			if (ino_tab[i] & tmp_byte) {
+			if (IT_BUFFER[i] & tmp_byte) {
 				tmp_byte = i * 8 + k;
 				buffer[r].inode_offset = tmp_byte;
 				read_inode(fs, &buffer[r]);
@@ -479,7 +424,4 @@ void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 			}
 		}
 	}
-
-	free(ino_tab);
-	free(tmp_sec);
 }
