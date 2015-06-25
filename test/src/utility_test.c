@@ -69,11 +69,11 @@ TEST(utility_tests, checksum_check_test)
 	for (i = 0; i < 64; ++i)
 		tmp[i + 128] = check[i];
 
-	TEST_ASSERT_TRUE(checksum_check(tmp, &file, 64));
+	TEST_ASSERT_TRUE(checksum_check(tmp, check, &file, 64));
 
 	file.size = 64;
 	file.check_size = 16;
-	TEST_ASSERT_FALSE(checksum_check(data1, &file, 16));
+	TEST_ASSERT_FALSE(checksum_check(data1, check, &file, 16));
 
 	free(check);
 	free(tmp);

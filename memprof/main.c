@@ -1,4 +1,5 @@
 #include "main.h"
+#include "buffer.h"
 
 int main(void)
 {
@@ -17,7 +18,7 @@ int main(void)
 
 	uint8_t *buf;
 
-	buf = malloc(fs.sector_size);
+	buf = SEC_BUFFER;
 
 	for (i = 0; i < fs.sector_size; ++i) {
 		buf[i] = 0xFF;
@@ -26,9 +27,8 @@ int main(void)
 	fs_create(&fs, &fil, fs.sector_size, 1, true);
 	fs_write(&fs, &fil, (char *) buf );
 
-	free(buf);
-
-	buf = malloc(fs.sector_size);
+	for (i = 0; i < fs.sector_size; ++i)
+		buf[i] = 0x00;
 
 	fs_read(&fs, &fil, (char *) buf, fs.sector_size);
 

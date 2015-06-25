@@ -33,8 +33,6 @@ struct INODE {
 	uint id;
 	uint size;
 	uint check_size;
-	uint creation_date;
-	uint last_modified;
 	/* Pointer to the start sector of the file */
 	uint location;
 	uint inode_offset;

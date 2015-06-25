@@ -26,8 +26,6 @@ TEST_SETUP(tasks_tests)
 	in1.id = 0;
 	in1.size = 10;
 	in1.check_size = 1;
-	in1.creation_date = 0x0F;
-	in1.last_modified = 0x0F;
 	in1.location = 0;
 	in1.inode_offset = 0;
 	in1.custody = false;
@@ -36,8 +34,6 @@ TEST_SETUP(tasks_tests)
 	in2.id = 3;
 	in2.size = 1;
 	in2.check_size = 1;
-	in2.creation_date = 0xFF00;
-	in2.last_modified = 0xFFFF;
 	in2.location = 10;
 	in2.inode_offset = 1;
 	in2.custody = true;
@@ -46,8 +42,6 @@ TEST_SETUP(tasks_tests)
 	in3.id = 10;
 	in3.size = 2;
 	in3.check_size = 1;
-	in3.creation_date = 0xFF00;
-	in3.last_modified = 0xFFFF;
 	in3.location = 11;
 	in3.inode_offset = 2;
 	in3.custody = true;
@@ -56,8 +50,6 @@ TEST_SETUP(tasks_tests)
 	in4.id = 10;
 	in4.size = 2;
 	in4.check_size = 1;
-	in4.creation_date = 0xFF00;
-	in4.last_modified = 0xFFFF;
 	in4.location = 11;
 	in4.inode_offset = 2;
 	in4.custody = true;

@@ -301,8 +301,8 @@ void checksum(const uint8_t *buffer, uint length, uint8_t *result, uint size)
 	free(tmp);
 }
 
-bool checksum_check(const uint8_t *buffer, const struct INODE *file,
-	uint sector_size)
+bool checksum_check(const uint8_t *buffer, const uint8_t *check,
+	const struct INODE *file, uint sector_size)
 {
 	uint i, fil_cnt, che_cnt, fbc,
 	 cbc;
@@ -317,7 +317,7 @@ bool checksum_check(const uint8_t *buffer, const struct INODE *file,
 	checksum(buffer, fbc, tmp, file->check_size);
 
 	for (i = 0; i < file->check_size; ++i) {
-		if (buffer[i + fbc] != tmp[i]) {
+		if (check[i] != tmp[i]) {
 			free(tmp);
 			return false;
 		}

@@ -1,4 +1,5 @@
 #include "file_system.h"
+#include "buffer.h"
 
 bool free_disk_space(struct FILE_SYSTEM *fs, uint size);
 bool resize_inode_block(struct FILE_SYSTEM *fs);
@@ -151,41 +152,41 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	for (i = 0; i < fs->sector_size; ++i)
 		buffer[i] = 0x00;
 
-	/* TODO: Is this a correct softupdate? */
+	disk_write(fs->disk, (char *) ino_tab, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
 	disk_write(fs->disk, (char *) all_tab, fs->alloc_table,
 		fs->alloc_table_size);
 	disk_write(fs->disk, (char *) buffer, fs->inode_block +
 		file->inode_offset, 1);
-	disk_write(fs->disk, (char *) ino_tab, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
+
 	free(all_tab);
 	free(ino_tab);
 	free(buffer);
-
 	return FS_OK;
 }
 
 enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
 	char *buffer, uint length)
 {
-	uint i, sector_count;
+	uint i, sector_count, check_count;
 	uint8_t *tmp;
 
 	if (length > file->size)
 		return FS_PARAM_ERROR;
 
 	sector_count = div_up(file->size, fs->sector_size);
-	sector_count += div_up(file->check_size, fs->sector_size);
-	tmp = malloc(sector_count * fs->sector_size);
+	disk_read(fs->disk, buffer, file->location, sector_count - 1);
+	disk_read(fs->disk, (char *) SEC_BUFFER, file->location + sector_count - 1, 1);
 
-	disk_read(fs->disk, (char *) tmp, file->location, sector_count);
-	if (!checksum_check(tmp, file, fs->sector_size)) {
+	memcpy(buffer, SEC_BUFFER, file->size % fs->sector_size);
+
+	check_count = div_up(file->check_size, fs->sector_size);
+	tmp = malloc(check_count);
+	disk_read(fs->disk, (char *) tmp, file->location + sector_count, check_count);
+	if (!checksum_check(buffer, tmp, file, fs->sector_size)) {
 		free(tmp);
 		return FS_CHECK_ERROR;
 	}
-
-	for (i = 0; i < length; ++i)
-		buffer[i] = tmp[i];
 
 	free(tmp);
 	return FS_OK;
@@ -204,7 +205,6 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 
 	che_buf = malloc(che_sec * fs->sector_size);
 	checksum((uint8_t *) buffer, file->size, che_buf, file->check_size);
-	file->last_modified = (uint) time(NULL);
 
 	/* Makes a padding if the file does not fit the sectors */
 	if (pad) {
@@ -343,8 +343,6 @@ unsigned long size, uint time_to_live, bool custody)
 
 	file->size = size;
 	file->check_size = check_size;
-	file->creation_date = (uint) time(NULL);
-	file->last_modified = (uint) time(NULL);
 	file->location = fs->sector_count - all_off - bit_cnt;
 	file->custody = custody;
 	file->time_to_live = time_to_live;

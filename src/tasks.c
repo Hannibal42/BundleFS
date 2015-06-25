@@ -1,5 +1,8 @@
 #include "tasks.h"
 
+extern unsigned long div_up(unsigned long dividend,
+	unsigned long divisor);
+
 void defragment(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
@@ -94,5 +97,40 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 
 	/* TODO: Notify upcn which Bundles have expiered */
 	free(tmp);
+	free(inodes);
+}
+
+void restore_fs(struct FILE_SYSTEM *fs)
+{
+	struct INODE* inodes;
+	uint8_t *all_tab;
+	uint ino_cnt, tmp, ino_size, i;
+
+	ino_cnt = inodes_used(fs);
+	inodes = malloc(ino_cnt * sizeof(struct INODE));
+	load_inodes(fs, inodes);
+
+	quicksort_inodes(inodes, ino_cnt);
+
+	all_tab = malloc(fs->alloc_table_size * fs->sector_size);
+	disk_read(fs->disk, (char *) all_tab, fs->alloc_table,
+		fs->alloc_table_size);
+
+	tmp = fs->sector_count;
+	tmp -= (fs->inode_block + fs->inode_block_size);
+	write_seq(all_tab, tmp, fs->inode_block +
+		fs->inode_block_size);
+
+	for (i = 0; i < ino_cnt; i++) {
+		ino_size = div_up(inodes[i].size, fs->sector_size);
+		ino_size += div_up(inodes[i].check_size, fs->sector_size);
+		tmp = fs->sector_count - inodes[i].location - ino_size;
+		write_seq(all_tab, tmp, ino_size);
+	}
+
+	disk_write(fs->disk, (char *) all_tab, fs->alloc_table,
+		fs->alloc_table_size);
+
+	free(all_tab);
 	free(inodes);
 }

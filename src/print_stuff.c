@@ -53,8 +53,6 @@ void print_inode(struct INODE *file)
 	printf("ID: %d\n", file->id);
 	printf("size: %d\n", file->size);
 	printf("check_size: %d\n", file->check_size);
-	printf("creation date: %d\n", file->creation_date);
-	printf("last modified: %d\n", file->last_modified);
 	printf("location: %d\n", file->location);
 	printf("inode offset: %d\n", file->inode_offset);
 	printf("custody: %hu\n", file->custody);
