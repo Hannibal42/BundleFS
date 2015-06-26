@@ -191,7 +191,7 @@ TEST(fs_tests, fs_create_test)
 		tmp_time = (uint) time(NULL) + 10000;
 		res = fs_create(&fs1, &inodes[0], 8 * fs1.sector_size,
 			tmp_time, true);
-		tmp -= 8;
+		tmp -= 9;
 		if (tmp > 0) {
 			disk_read(disk1, (char *) al_tab, fs1.alloc_table,
 				fs1.alloc_table_size);

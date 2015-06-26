@@ -3,9 +3,9 @@
 
 #include "fs_defines.h"
 
-static uint8_t AT_BUFFER[AT_SIZE];
-static uint8_t IT_BUFFER[AT_SIZE];
-static uint8_t SEC_BUFFER[SECTOR_SIZE];
-
+/* Note: The unused warning is suppressed for these buffers, works only for gcc */
+static uint8_t __attribute__((__unused__)) AT_BUFFER[AT_SIZE];
+static uint8_t __attribute__((__unused__)) IT_BUFFER[AT_SIZE];
+static uint8_t __attribute__((__unused__)) SEC_BUFFER[SECTOR_SIZE];
 
 #endif /* BUFFER_H */

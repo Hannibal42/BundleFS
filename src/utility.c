@@ -1,7 +1,6 @@
 #include "utility.h"
 
-#include "buffer.h"
-
+#include <buffer.h>
 
 /*Writes the given bit into the allocation table*/
 void write_bit(uint8_t *table, uint index, bool bit_value)
