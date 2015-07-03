@@ -226,6 +226,9 @@ TEST(tasks_tests, restore_fs_test)
 
 	for (i = 0; i  < fs1.alloc_table_size * fs1.sector_size; ++i)
 		TEST_ASSERT_EQUAL_HEX8(tmp_cpy[i], tmp[i]);
+
+	free(tmp);
+	free(tmp_cpy);
 }
 
 TEST_GROUP_RUNNER(tasks_tests)

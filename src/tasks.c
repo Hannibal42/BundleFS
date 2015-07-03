@@ -122,8 +122,13 @@ void restore_fs(struct FILE_SYSTEM *fs)
 
 	quicksort_inodes(inodes, ino_cnt);
 
-	disk_read(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
+	for (i = 0; i < fs->alloc_table_size * fs->sector_size; ++i) {
+		if (i < (fs->sector_count / 8)) {
+			AT_BUFFER[i] = 0x00;
+		} else {
+			AT_BUFFER[i] = 0xFF;
+		}
+	}
 
 	tmp = fs->sector_count;
 	tmp -= (fs->inode_block + fs->inode_block_size);
