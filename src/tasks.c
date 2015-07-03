@@ -2,8 +2,8 @@
 
 #include "buffer.h"
 
-extern unsigned long div_up(unsigned long dividend,
-	unsigned long divisor);
+void extern load_all_tab(uint8_t *buffer,struct FILE_SYSTEM *fs);
+void extern load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 
 
 //TODO: Copy the data block by block
@@ -11,8 +11,8 @@ extern unsigned long div_up(unsigned long dividend,
 void defragment(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
-	uint ino_cnt, k, sec_cnt, tmp, al_tab_sec, old_loc, che_size;
-	int i;
+	uint ino_cnt, k, sec_cnt, al_tab_sec, old_loc, che_size;
+	int i, r, tmp;
 
 	ino_cnt = inodes_used(fs);
 	inodes = malloc(inodes_used(fs) * sizeof(struct INODE));
@@ -22,6 +22,7 @@ void defragment(struct FILE_SYSTEM *fs)
 	disk_read(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
 		fs->alloc_table_size);
 
+	/* The Inodes are sorted by their location */
 	quicksort_inodes(inodes, ino_cnt);
 
 	k = fs->sector_count;
@@ -29,25 +30,31 @@ void defragment(struct FILE_SYSTEM *fs)
 		che_size = fs->sector_size - check_size();
 		sec_cnt = div_up(inodes[i].size, che_size);
 
-		disk_read(fs->disk, (char *) SEC_BUFFER, inodes[i].location,
-			sec_cnt);
-
 		tmp = find_seq(AT_BUFFER, al_tab_sec, sec_cnt);
 
+		/* Checks if the file can be copied */
 		if (tmp < 0) {
 			k = inodes[i].location;
 			continue;
 		}
 
-		disk_write(fs->disk, (char *) SEC_BUFFER,
-			fs->sector_count - (tmp + sec_cnt), sec_cnt);
 		write_seq(AT_BUFFER, tmp, sec_cnt);
 		disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
 			fs->alloc_table_size);
+
+		/* Makes a copy of the file */
+		for (r = 0; r < sec_cnt; ++r) {
+			disk_read(fs->disk, (char *) SEC_BUFFER, inodes[i].location + r,
+				1);
+			disk_write(fs->disk, (char *) SEC_BUFFER,
+				(fs->sector_count - (tmp + sec_cnt)) + r, 1);
+		}
+
 		old_loc = inodes[i].location;
 		inodes[i].location = fs->sector_count - (tmp + sec_cnt);
 		write_inode(fs, &inodes[i]);
 
+		/* Checks if the copy is at the right place already */
 		if (k == (fs->sector_count - tmp)) {
 			k = inodes[i].location;
 			delete_seq(AT_BUFFER, fs->sector_count - old_loc - sec_cnt,
@@ -60,7 +67,13 @@ void defragment(struct FILE_SYSTEM *fs)
 		delete_seq(AT_BUFFER, fs->sector_count - old_loc, sec_cnt);
 		write_seq(AT_BUFFER, fs->sector_count - (k - sec_cnt), sec_cnt);
 
-		disk_write(fs->disk, (char *) SEC_BUFFER, k - sec_cnt, sec_cnt);
+		/* Copy file to the right place */
+		for (r = 0; r < sec_cnt; ++r) {
+		disk_write(fs->disk, (char *) SEC_BUFFER,
+				(fs->sector_count - (tmp + sec_cnt)) + r, 1);
+		disk_write(fs->disk, (char *) SEC_BUFFER, k - sec_cnt + r, 1);
+		}
+
 		disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
 			fs->alloc_table_size);
 		inodes[i].location = k - sec_cnt;
@@ -118,8 +131,7 @@ void restore_fs(struct FILE_SYSTEM *fs)
 		fs->inode_block_size);
 
 	for (i = 0; i < ino_cnt; i++) {
-		ino_size = div_up(inodes[i].size, fs->sector_size);
-		//TODO: The calculation needs to be alligned to the new check size
+		ino_size = div_up(inodes[i].size, fs->sector_size - check_size());
 		tmp = fs->sector_count - inodes[i].location - ino_size;
 		write_seq(AT_BUFFER, tmp, ino_size);
 	}

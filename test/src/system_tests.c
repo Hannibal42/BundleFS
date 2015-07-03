@@ -9,6 +9,8 @@ TEST_SETUP(system_tests)
 {
 	uint i;
 
+	srand(time(NULL));
+
 	disk_fill(&disks[0], "disks/disk0.disk", 1024, 64);
 	disk_create(&disks[0], 1024);
 	disk_fill(&disks[1], "disks/disk1.disk", 4096, 64);
@@ -43,11 +45,12 @@ TEST_SETUP(system_tests)
 
 	data[2] = malloc(5000);
 	for (i = 0; i < 5000; ++i)
-		data[2][i] = 0xAB;
+		data[2][i] = rand();
 
 	data[3] = malloc(100000);
 	for (i = 0; i < 100000; ++i)
 		data[3][i] = 0xCC;
+
 
 	/* TODO: Make random data */
 }
@@ -68,7 +71,7 @@ TEST(system_tests, overflow_disk_test)
 	struct FILE_SYSTEM fs;
 	struct INODE tmp;
 
-	for (k = 4; k < 8; ++k) {
+	for (k = 0; k < 8; ++k) {
 		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs));
 		for (i = 0; i < 10000; ++i)
 			if (fs_create(&fs, &tmp, 100, 100, false) != FS_OK) {

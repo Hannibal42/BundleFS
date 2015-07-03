@@ -20,6 +20,7 @@ struct disk {
 	uint sector_size;
 	uint sector_count;
 	enum DISK_STATUS status;
+	uint phy_sector_size;
 };
 
 /*Fills the struct with the right parameters*/

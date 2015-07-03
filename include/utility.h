@@ -25,7 +25,7 @@ int get_free_bit(uint8_t index, uint8_t byte);
 int popcount(uint8_t byte);
 uint check_size(void);
 int find_seq_small(const uint8_t *table, uint table_size, uint length);
-inline unsigned long div_up(unsigned long dividend,
+unsigned long div_up(unsigned long dividend,
 	unsigned long divisor);
 void quicksort_inodes(struct INODE *inodes, int nitems);
 /* checks if the sequence of a given length starting at index is all 0 */

@@ -3,8 +3,8 @@
 
 bool free_disk_space(struct FILE_SYSTEM *fs, uint size);
 bool resize_inode_block(struct FILE_SYSTEM *fs);
-void inline load_all_tab(uint8_t *buffer,struct FILE_SYSTEM *fs);
-void inline load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
+void load_all_tab(uint8_t *buffer,struct FILE_SYSTEM *fs);
+void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
@@ -328,20 +328,24 @@ unsigned long size, uint time_to_live, bool custody)
 	return FS_OK;
 }
 
-void inline load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
+void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
 {
-	uint8_t i;
+	uint32_t i;
 
+	for (i = 0; i < AT_SIZE; ++i)
+		buffer[i] = 0xFF;
 	for (i = 0; i < fs->alloc_table_size; ++i) {
 		disk_read(fs->disk, (char *) SEC_BUFFER, fs->alloc_table + i, 1);
 		memcpy(buffer, SEC_BUFFER, fs->sector_size);
 	}
 }
 
-void inline load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
+void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
 {
-	uint8_t i;
+	uint32_t i;
 
+	for (i = 0; i < AT_SIZE; ++i)
+		buffer[i] = 0xFF;
 	for (i = 0; i < fs->inode_alloc_table_size; ++i) {
 		disk_read(fs->disk, (char *) SEC_BUFFER, fs->inode_alloc_table + i, 1);
 		memcpy(buffer, SEC_BUFFER, fs->sector_size);

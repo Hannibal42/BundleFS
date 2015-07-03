@@ -5,5 +5,6 @@
 
 void delete_invalid_inodes(struct FILE_SYSTEM *fs);
 void defragment(struct FILE_SYSTEM *fs);
+void restore_fs(struct FILE_SYSTEM *fs);
 
 #endif /* TASKS_H */

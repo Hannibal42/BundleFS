@@ -244,7 +244,7 @@ void delete_seq(uint8_t *table, uint index, uint length)
 	}
 }
 
-inline unsigned long div_up(unsigned long dividend,
+unsigned long div_up(unsigned long dividend,
 	unsigned long divisor)
 {
 	return (dividend + divisor - 1) / divisor;
@@ -341,10 +341,15 @@ bool isNotValid(struct INODE *inode)
 {
 	uint t;
 	/* TODO: Is the TTL a date or just how long the bundle lives? */
-	t = (uint) time(NULL);
-
-	return t > inode->time_to_live;
+	//t = (uint) time(NULL);
+	#ifdef BOARD_TEST
+		t = 5;
+	#else
+		t = (uint) time(NULL);
+	#endif /* BOARD_TEST */
+		return t > inode->time_to_live;
 }
+
 
 /* TODO: Make a test */
 /* file has to have the right offset of the inode you want to load */
@@ -403,6 +408,7 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 }
 
 /* This needs to be called with a buffer that can hold all inodes! */
+//TODO: Make efficient
 void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
 	uint i, k, r;
@@ -423,4 +429,43 @@ void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 			}
 		}
 	}
+}
+
+
+/* Returns the position of all inodes in a block */
+/*
+void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab, uint offset, uint *pos, uint *ino_cnt)
+{
+	uint i, tmp_byte;
+	uint8_t *tmp;
+
+	tmp_byte = fs->inode_sec + 1;
+	start = offset / 8;
+	tmp = malloc(byte);
+	memcpy(tmp, in_tab[start], tmp_byte);
+
+	tmp_byte = 0xFF >> offset % 8;
+	tmp[start] &= tmp_byte;
+	tmp_byte = 0xFF << 8 - ((offset + fs->inode_sec) % 8);
+	for(i = 0; i < fs->inode_sec; ++i) {
+
+	}
+	//TODO: Implement
+	free(tmp);
+
+}*/
+
+void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
+	uint *pos, uint ino_cnt, uint sec_num)
+{
+	uint k;
+	struct INODE *tmp;
+
+	disk_read(fs->disk, (char *) SEC_BUFFER, fs->inode_block + sec_num, 1);
+
+	tmp = (struct INODE *) SEC_BUFFER;
+	for (k = 0; k < ino_cnt; ++k) {
+		buffer[k] = tmp[pos[k]];
+	}
+
 }

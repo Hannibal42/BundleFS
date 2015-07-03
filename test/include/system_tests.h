@@ -6,6 +6,8 @@
 
 #include "file_system.h"
 #include "tasks.h"
+#include <time.h>
+#include <stdlib.h>
 
 void run_system_tests(void);
 

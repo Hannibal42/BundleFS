@@ -196,9 +196,42 @@ TEST(tasks_tests, delete_invalid_inodes_test)
 	TEST_ASSERT_EQUAL(FS_ERROR, ret_val);
 }
 
+TEST(tasks_tests, restore_fs_test)
+{
+	int i;
+	uint8_t *tmp, *tmp_cpy;
+
+	fs_mount(disk1, &fs1);
+
+	fs_create(&fs1, &in1, 100, 100, false);
+	fs_create(&fs1, &in2, 100, 100, false);
+	fs_delete(&fs1, &in1);
+	fs_create(&fs1, &in3, 2000, 100, true);
+	fs_create(&fs1, &in1, 1001, 100, false);
+	fs_delete(&fs1, &in3);
+	// 3000 0000 03ff fe
+	tmp = malloc(fs1.alloc_table_size * fs1.sector_size);
+	tmp_cpy = malloc(fs1.alloc_table_size * fs1.sector_size);
+	disk_read(disk1, (char *) tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+	memcpy(tmp_cpy, tmp, fs1.alloc_table_size * fs1.sector_size);
+	tmp[1] = 0xFF;
+	tmp[2] = 0xFF;
+	disk_write(disk1, (char *) tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+	// 30FF FF00 03ff fe
+	restore_fs(&fs1);
+	disk_read(disk1, (char *) tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+
+	for (i = 0; i  < fs1.alloc_table_size * fs1.sector_size; ++i)
+		TEST_ASSERT_EQUAL_HEX8(tmp_cpy[i], tmp[i]);
+}
+
 TEST_GROUP_RUNNER(tasks_tests)
 {
 	RUN_TEST_CASE(tasks_tests, defragment_test);
 	RUN_TEST_CASE(tasks_tests, defragment_test2);
 	RUN_TEST_CASE(tasks_tests, delete_invalid_inodes_test);
+	RUN_TEST_CASE(tasks_tests, restore_fs_test);
 }
