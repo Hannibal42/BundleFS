@@ -7,5 +7,6 @@
 static uint8_t __attribute__((__unused__)) AT_BUFFER[AT_SIZE];
 static uint8_t __attribute__((__unused__)) IT_BUFFER[AT_SIZE];
 static uint8_t __attribute__((__unused__)) SEC_BUFFER[SECTOR_SIZE];
+static uint8_t __attribute__((__unused__)) INO_BUFFER[SECTOR_SIZE];
 
 #endif /* BUFFER_H */

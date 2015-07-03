@@ -5,6 +5,7 @@
 #include <unity_fixture.h>
 
 #include "tasks.h"
+#include "metadata.h"
 
 void run_tasks_tests(void);
 

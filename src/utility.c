@@ -322,7 +322,7 @@ bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 
 	tmp = inodes_used(fs);
 	inodes = malloc(tmp * sizeof(struct INODE));
-	load_inodes(fs, inodes);
+	load_inodes_block(fs, inodes);
 
 	for (i = 0; i < tmp; ++i) {
 		if (inodes[i].size >= size) {
@@ -393,22 +393,30 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 
 uint inodes_used(struct FILE_SYSTEM *fs)
 {
-	uint i, size, ret_val;
+	uint i, k, size, ret_val;
+	uint8_t tmp;
 
-	size = fs->sector_size * fs->inode_alloc_table_size;
+	//size = fs->sector_size * fs->inode_alloc_table_size;
+	size = fs->inode_max / 8;
 
 	ret_val = 0;
 	disk_read(fs->disk, (char *) IT_BUFFER, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
 	for (i = 0; i < size; ++i)
-		ret_val += 8 - popcount(IT_BUFFER[i]);
+		ret_val += popcount(IT_BUFFER[i]);
 
-	ret_val = fs->inode_max - ret_val;
+	for (k = 0; k < (fs->inode_max % 8); ++k) {
+		tmp = 0x80 >> k;
+		if (tmp & IT_BUFFER[i])
+			++ret_val;
+	}
+
 	return ret_val;
 }
 
 /* This needs to be called with a buffer that can hold all inodes! */
 //TODO: Make efficient
+
 void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
 	uint i, k, r;
@@ -433,27 +441,28 @@ void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 
 
 /* Returns the position of all inodes in a block */
-/*
-void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab, uint offset, uint *pos, uint *ino_cnt)
+void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
+	uint offset, uint *pos, uint *ino_cnt)
 {
-	uint i, tmp_byte;
-	uint8_t *tmp;
+	uint i, tmp_byte, shift, start;
 
-	tmp_byte = fs->inode_sec + 1;
 	start = offset / 8;
-	tmp = malloc(byte);
-	memcpy(tmp, in_tab[start], tmp_byte);
+	*ino_cnt = 0;
+	shift = offset % 8;
 
-	tmp_byte = 0xFF >> offset % 8;
-	tmp[start] &= tmp_byte;
-	tmp_byte = 0xFF << 8 - ((offset + fs->inode_sec) % 8);
 	for(i = 0; i < fs->inode_sec; ++i) {
-
+		tmp_byte = 0x80 >> shift;
+		if (in_tab[start] & tmp_byte) {
+			pos[*ino_cnt] = i;
+			(*ino_cnt)++;
+		}
+		++shift;
+		if (shift > 7) {
+			shift = 0;
+			++start;
+		}
 	}
-	//TODO: Implement
-	free(tmp);
-
-}*/
+}
 
 void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
 	uint *pos, uint ino_cnt, uint sec_num)
@@ -469,3 +478,26 @@ void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
 	}
 
 }
+
+void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
+{
+	uint i, *ino_pos, ino_cnt, offset, ino_off;
+
+	disk_read(fs->disk, (char *) IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
+
+	offset = 0;
+	ino_off = 0;
+	ino_pos = malloc(fs->inode_sec * sizeof(uint));
+
+	for (i = 0; i < fs->inode_block_size; ++i) {
+		get_ino_pos(fs, IT_BUFFER, offset, ino_pos, &ino_cnt);
+		load_inode_block(fs, &buffer[ino_off], ino_pos, ino_cnt, i);
+		ino_off += ino_cnt;
+		offset += fs->inode_sec;
+	}
+
+
+	free(ino_pos);
+}
+

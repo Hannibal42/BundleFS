@@ -5,6 +5,7 @@ uint8_t *data1, *data2, *data3;
 
 extern int find_seq_byte(uint8_t byte, uint length);
 
+
 TEST_GROUP(utility_tests);
 
 TEST_SETUP(utility_tests)
@@ -379,8 +380,49 @@ TEST(utility_tests, calc_fake_crc_test)
 	TEST_ASSERT_EQUAL_HEX8(0x00, tmp);
 }
 
+TEST(utility_tests, get_ino_pos_test)
+{
+	struct FILE_SYSTEM fs;
+	uint8_t tmp[4];
+	uint *pos, ino_cnt;
+
+	tmp[0] = 0xF0; tmp[1] = 0xFF;
+	tmp[2] = 0xF8; tmp[3] = 0x8F;
+
+	fs.inode_sec = 5;
+	pos = malloc(5 * sizeof(uint));
+
+	get_ino_pos(&fs, tmp, 20, pos, &ino_cnt);
+	TEST_ASSERT_EQUAL_UINT(2, ino_cnt);
+	TEST_ASSERT_EQUAL_UINT(0, pos[0]);
+	TEST_ASSERT_EQUAL_UINT(4, pos[1]);
+
+	get_ino_pos(&fs, tmp, 25, pos, &ino_cnt);
+	TEST_ASSERT_EQUAL_UINT(2, ino_cnt);
+	TEST_ASSERT_EQUAL_UINT(3, pos[0]);
+	TEST_ASSERT_EQUAL_UINT(4, pos[1]);
+
+	fs.inode_sec = 7;
+	get_ino_pos(&fs, tmp, 25, pos, &ino_cnt);
+	TEST_ASSERT_EQUAL_UINT(4, ino_cnt);
+	TEST_ASSERT_EQUAL_UINT(3, pos[0]);
+	TEST_ASSERT_EQUAL_UINT(4, pos[1]);
+	TEST_ASSERT_EQUAL_UINT(5, pos[2]);
+	TEST_ASSERT_EQUAL_UINT(6, pos[3]);
+
+	get_ino_pos(&fs, tmp, 0, pos, &ino_cnt);
+	TEST_ASSERT_EQUAL_UINT(4, ino_cnt);
+	TEST_ASSERT_EQUAL_UINT(0, pos[0]);
+	TEST_ASSERT_EQUAL_UINT(1, pos[1]);
+	TEST_ASSERT_EQUAL_UINT(2, pos[2]);
+	TEST_ASSERT_EQUAL_UINT(3, pos[3]);
+
+	free(pos);
+}
+
 TEST_GROUP_RUNNER(utility_tests)
 {
+	RUN_TEST_CASE(utility_tests, get_ino_pos_test);
 	RUN_TEST_CASE(utility_tests, write_bit_test);
 	RUN_TEST_CASE(utility_tests, write_seq_test);
 	RUN_TEST_CASE(utility_tests, delete_seq_test);

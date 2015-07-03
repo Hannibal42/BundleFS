@@ -6,8 +6,6 @@ void extern load_all_tab(uint8_t *buffer,struct FILE_SYSTEM *fs);
 void extern load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 
 
-//TODO: Copy the data block by block
-//TODO: More comments
 void defragment(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
@@ -15,8 +13,8 @@ void defragment(struct FILE_SYSTEM *fs)
 	int i, r, tmp;
 
 	ino_cnt = inodes_used(fs);
-	inodes = malloc(inodes_used(fs) * sizeof(struct INODE));
-	load_inodes(fs, inodes);
+	inodes = malloc(ino_cnt * sizeof(struct INODE));
+	load_inodes_block(fs, inodes);
 
 	al_tab_sec = fs->alloc_table_size * fs->sector_size;
 	disk_read(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
@@ -42,7 +40,7 @@ void defragment(struct FILE_SYSTEM *fs)
 		disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
 			fs->alloc_table_size);
 
-		/* Makes a copy of the file */
+		/* Makes a copy of the file block by block*/
 		for (r = 0; r < sec_cnt; ++r) {
 			disk_read(fs->disk, (char *) SEC_BUFFER, inodes[i].location + r,
 				1);
@@ -96,7 +94,7 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 	in_cnt = inodes_used(fs);
 	tmp = malloc(in_cnt * sizeof(uint) * 2);
 	inodes = malloc(in_cnt * sizeof(struct INODE));
-	load_inodes(fs, inodes);
+	load_inodes_block(fs, inodes);
 
 	for (i = 0; i < in_cnt; ++i) {
 		if (inodes[i].size > 0 && isNotValid(&inodes[i])) {
@@ -111,6 +109,9 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 	free(inodes);
 }
 
+
+/* This function writes the allocation table new, this is used to fix
+blocks that are marked allocated, but dont belong to an inode */
 void restore_fs(struct FILE_SYSTEM *fs)
 {
 	struct INODE* inodes;
@@ -118,7 +119,7 @@ void restore_fs(struct FILE_SYSTEM *fs)
 
 	ino_cnt = inodes_used(fs);
 	inodes = malloc(ino_cnt * sizeof(struct INODE));
-	load_inodes(fs, inodes);
+	load_inodes_block(fs, inodes);
 
 	quicksort_inodes(inodes, ino_cnt);
 

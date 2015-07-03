@@ -43,6 +43,13 @@ void read_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 /* Loads all inodes from disk and stores them in buffer */
 void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer);
 
+void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer);
+
+void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
+	uint *pos, uint ino_cnt, uint sec_num);
+void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
+	uint offset, uint *pos, uint *ino_cnt);
+
 /* TODO: Replace with the real crc calc onboard */
 uint calc_fake_crc(const uint value);
 void reset_fake_crc(void);
