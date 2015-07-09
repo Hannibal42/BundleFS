@@ -51,34 +51,6 @@ TEST_TEAR_DOWN(utility_tests)
 	free(data3);
 }
 
-/*
-TEST(utility_tests, checksum_check_test)
-{
-	uint i;
-	struct INODE file;
-	uint8_t *check, *tmp;
-
-	check = malloc(64);
-	tmp = malloc(192);
-
-	file.size = 128;
-	checksum(data1, 128, check, 64);
-
-	for (i = 0; i < 128; ++i)
-		tmp[i] = data1[i];
-
-	for (i = 0; i < 64; ++i)
-		tmp[i + 128] = check[i];
-
-	TEST_ASSERT_TRUE(checksum_check(tmp, check, &file, 64));
-
-	file.size = 64;
-	TEST_ASSERT_FALSE(checksum_check(data1, check, &file, 16));
-
-	free(check);
-	free(tmp);
-}*/
-
 TEST(utility_tests, find_seq_small_test)
 {
 
@@ -432,7 +404,6 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, last_free_bits_test);
 	RUN_TEST_CASE(utility_tests, popcount_test);
 	RUN_TEST_CASE(utility_tests, find_seq_small_test);
-	//RUN_TEST_CASE(utility_tests, checksum_check_test);
 	RUN_TEST_CASE(utility_tests, quick_sort_inodes_test);
 	RUN_TEST_CASE(utility_tests, find_seq_byte_test);
 	RUN_TEST_CASE(utility_tests, check_seq_test);

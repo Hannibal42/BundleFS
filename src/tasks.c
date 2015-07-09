@@ -2,10 +2,7 @@
 
 #include "buffer.h"
 
-void extern load_all_tab(uint8_t *buffer,struct FILE_SYSTEM *fs);
-void extern load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
-
-
+/* Defragments the files on disk */
 void defragment(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
@@ -85,6 +82,7 @@ void defragment(struct FILE_SYSTEM *fs)
 }
 
 /* This should be a regular task executed by freeRTOS */
+//TODO: Load the inodes block by block
 void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 {
 	uint i, in_cnt;
@@ -112,6 +110,7 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 
 /* This function writes the allocation table new, this is used to fix
 blocks that are marked allocated, but dont belong to an inode */
+//TODO: Load the inodes block by block
 void restore_fs(struct FILE_SYSTEM *fs)
 {
 	struct INODE* inodes;

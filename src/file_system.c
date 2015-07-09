@@ -66,7 +66,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 
 	/*Make superblock*/
 	fs->inode_sec = sec_size / sizeof(struct INODE);
-	fs->inode_max = fil_cnt - (fil_cnt % fs->inode_sec);
+	fs->inode_max = fil_cnt - (fil_cnt % fs->inode_sec); /*TODO: This is 0 if fil_cnt < inode_sec */
 	fs->inode_block_size = fs->inode_max / fs->inode_sec;
 	fs->inode_block = fs->inode_alloc_table + fs->inode_alloc_table_size;
 	fs->sector_size = sec_size;

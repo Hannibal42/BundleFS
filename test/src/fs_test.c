@@ -531,10 +531,11 @@ TEST(fs_tests, fs_mkfs_test)
 		TEST_ASSERT_EQUAL_UINT(fs->inode_alloc_table_size, it_size);
 		TEST_ASSERT_EQUAL_UINT(fs->inode_block,
 			(at_size + it_size + 1));
-		TEST_ASSERT_EQUAL_UINT(fs->inode_max, ino_max);
+		TEST_ASSERT_EQUAL_UINT(fs->inode_max, fs->inode_block_size *
+			fs->inode_sec);
 		TEST_ASSERT_EQUAL_UINT(fs->sector_size / sizeof(struct INODE),
 			fs->inode_sec);
-		TEST_ASSERT_EQUAL_UINT(div_up(ino_max, fs->inode_sec),
+		TEST_ASSERT_EQUAL_UINT((fs->inode_max / fs->inode_sec),
 			fs->inode_block_size);
 		ib_size = fs->inode_block_size;
 

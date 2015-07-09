@@ -340,9 +340,8 @@ bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 bool isNotValid(struct INODE *inode)
 {
 	uint t;
-	/* TODO: Is the TTL a date or just how long the bundle lives? */
-	//t = (uint) time(NULL);
 	#ifdef BOARD_TEST
+		//TODO: What is the right time on the board
 		t = 5;
 	#else
 		t = (uint) time(NULL);
@@ -351,7 +350,7 @@ bool isNotValid(struct INODE *inode)
 }
 
 
-/* TODO: Make a test */
+
 /* file has to have the right offset of the inode you want to load */
 void read_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 {
@@ -371,6 +370,7 @@ void read_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 	memcpy(file, &tmp[ino_off], sizeof(struct INODE));
 }
 
+/* Writes a single inode onto the disk */
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 {
 	struct INODE *tmp;
@@ -391,12 +391,12 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 	disk_write(fs->disk, (char *) tmp, sec_off, 1);
 }
 
+/* Returns the number of inodes that are valid */
 uint inodes_used(struct FILE_SYSTEM *fs)
 {
 	uint i, k, size, ret_val;
 	uint8_t tmp;
 
-	//size = fs->sector_size * fs->inode_alloc_table_size;
 	size = fs->inode_max / 8;
 
 	ret_val = 0;
@@ -415,8 +415,7 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 }
 
 /* This needs to be called with a buffer that can hold all inodes! */
-//TODO: Make efficient
-
+/* Deprecated! */
 void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
 	uint i, k, r;
@@ -464,6 +463,8 @@ void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 	}
 }
 
+/* Loads all valid inodes from a block, the functions needs the position
+ of all valid inodes and in ino_cnt the number of valid inodes*/
 void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
 	uint *pos, uint ino_cnt, uint sec_num)
 {
@@ -479,6 +480,8 @@ void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
 
 }
 
+
+/* Loads all inodes into the buffer, the inodes are loaded block by block */
 void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
 	uint i, *ino_pos, ino_cnt, offset, ino_off;
@@ -497,7 +500,5 @@ void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
 		offset += fs->inode_sec;
 	}
 
-
 	free(ino_pos);
 }
-
