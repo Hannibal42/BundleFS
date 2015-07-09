@@ -39,8 +39,8 @@ void defragment(struct FILE_SYSTEM *fs)
 
 		/* Makes a copy of the file block by block*/
 		for (r = 0; r < sec_cnt; ++r) {
-			disk_read(fs->disk, (char *) SEC_BUFFER, inodes[i].location + r,
-				1);
+			disk_read(fs->disk, (char *) SEC_BUFFER,
+				inodes[i].location + r, 1);
 			disk_write(fs->disk, (char *) SEC_BUFFER,
 				(fs->sector_count - (tmp + sec_cnt)) + r, 1);
 		}
@@ -52,10 +52,10 @@ void defragment(struct FILE_SYSTEM *fs)
 		/* Checks if the copy is at the right place already */
 		if (k == (fs->sector_count - tmp)) {
 			k = inodes[i].location;
-			delete_seq(AT_BUFFER, fs->sector_count - old_loc - sec_cnt,
-				sec_cnt);
-			disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
-			fs->alloc_table_size);
+			delete_seq(AT_BUFFER,
+				fs->sector_count - old_loc - sec_cnt, sec_cnt);
+			disk_write(fs->disk, (char *) AT_BUFFER,
+				fs->alloc_table, fs->alloc_table_size);
 			continue;
 		}
 
@@ -64,9 +64,10 @@ void defragment(struct FILE_SYSTEM *fs)
 
 		/* Copy file to the right place */
 		for (r = 0; r < sec_cnt; ++r) {
-		disk_write(fs->disk, (char *) SEC_BUFFER,
+			disk_write(fs->disk, (char *) SEC_BUFFER,
 				(fs->sector_count - (tmp + sec_cnt)) + r, 1);
-		disk_write(fs->disk, (char *) SEC_BUFFER, k - sec_cnt + r, 1);
+			disk_write(fs->disk, (char *) SEC_BUFFER,
+				k - sec_cnt + r, 1);
 		}
 
 		disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
@@ -82,7 +83,7 @@ void defragment(struct FILE_SYSTEM *fs)
 }
 
 /* This should be a regular task executed by freeRTOS */
-//TODO: Load the inodes block by block
+/*TODO: Load the inodes block by block*/
 void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 {
 	uint i, in_cnt;
@@ -110,10 +111,10 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 
 /* This function writes the allocation table new, this is used to fix
 blocks that are marked allocated, but dont belong to an inode */
-//TODO: Load the inodes block by block
+/*TODO: Load the inodes block by block*/
 void restore_fs(struct FILE_SYSTEM *fs)
 {
-	struct INODE* inodes;
+	struct INODE *inodes;
 	uint ino_cnt, tmp, ino_size, i;
 
 	ino_cnt = inodes_used(fs);
@@ -123,11 +124,10 @@ void restore_fs(struct FILE_SYSTEM *fs)
 	quicksort_inodes(inodes, ino_cnt);
 
 	for (i = 0; i < fs->alloc_table_size * fs->sector_size; ++i) {
-		if (i < (fs->sector_count / 8)) {
+		if (i < (fs->sector_count / 8))
 			AT_BUFFER[i] = 0x00;
-		} else {
+		else
 			AT_BUFFER[i] = 0xFF;
-		}
 	}
 
 	tmp = fs->sector_count;
@@ -136,7 +136,8 @@ void restore_fs(struct FILE_SYSTEM *fs)
 		fs->inode_block_size);
 
 	for (i = 0; i < ino_cnt; i++) {
-		ino_size = div_up(inodes[i].size, fs->sector_size - check_size());
+		ino_size = div_up(inodes[i].size,
+					fs->sector_size - check_size());
 		tmp = fs->sector_count - inodes[i].location - ino_size;
 		write_seq(AT_BUFFER, tmp, ino_size);
 	}

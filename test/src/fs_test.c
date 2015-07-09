@@ -488,9 +488,7 @@ TEST(fs_tests, fs_mount_test)
 		TEST_ASSERT_EQUAL_UINT(fs1.inode_alloc_table_size, tmp);
 		tmp += fs1.inode_alloc_table;
 		TEST_ASSERT_EQUAL_UINT(fs1.inode_block, tmp);
-		tmp = fs1.sector_count / 8;
-		if (tmp < 8)
-			tmp = 8;
+		tmp = fs1.inode_block_size * fs1.inode_sec;
 		TEST_ASSERT_EQUAL_UINT(fs1.inode_max, tmp);
 		TEST_ASSERT_EQUAL_UINT(fs1.sector_size / sizeof(struct INODE),
 			fs1.inode_sec);
@@ -510,6 +508,7 @@ TEST(fs_tests, fs_mkfs_test)
 	for (k = 0; k < 4; ++k) {
 
 		buffer = malloc(disks[k]->sector_size);
+		fs = malloc(sizeof(struct FILE_SYSTEM));
 		disk_initialize(disks[k]);
 		TEST_ASSERT_EQUAL(FS_OK, fs_mkfs(disks[k]));
 		at_size = div_up(disks[k]->sector_count,
@@ -521,7 +520,7 @@ TEST(fs_tests, fs_mkfs_test)
 
 		disk_read(disks[k], (char *) buffer, 0, 1);
 
-		fs = (struct FILE_SYSTEM *) buffer;
+		memcpy(fs, buffer, sizeof(struct FILE_SYSTEM));
 		TEST_ASSERT_EQUAL_UINT(fs->sector_size, disks[k]->sector_size);
 		TEST_ASSERT_EQUAL_UINT(fs->sector_count,
 			disks[k]->sector_count);
@@ -547,10 +546,12 @@ TEST(fs_tests, fs_mkfs_test)
 			TEST_ASSERT_EQUAL(buffer[i], 0x00);
 
 		disk_read(disks[k], (char *) buffer, 2, it_size);
-		tmp = ino_max / 8;
+
+		tmp = fs->inode_max / 8;
 		for (i = 0; i < tmp; ++i)
 			TEST_ASSERT_EQUAL(buffer[i], 0x00);
 
+		free(fs);
 		fs = NULL;
 		disk_shutdown(disks[k]);
 		free(buffer);

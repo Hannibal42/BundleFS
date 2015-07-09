@@ -341,7 +341,7 @@ bool isNotValid(struct INODE *inode)
 {
 	uint t;
 	#ifdef BOARD_TEST
-		//TODO: What is the right time on the board
+		/*TODO: What is the right time on the board*/
 		t = 5;
 	#else
 		t = (uint) time(NULL);
@@ -449,7 +449,7 @@ void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 	*ino_cnt = 0;
 	shift = offset % 8;
 
-	for(i = 0; i < fs->inode_sec; ++i) {
+	for (i = 0; i < fs->inode_sec; ++i) {
 		tmp_byte = 0x80 >> shift;
 		if (in_tab[start] & tmp_byte) {
 			pos[*ino_cnt] = i;
@@ -474,9 +474,8 @@ void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
 	disk_read(fs->disk, (char *) SEC_BUFFER, fs->inode_block + sec_num, 1);
 
 	tmp = (struct INODE *) SEC_BUFFER;
-	for (k = 0; k < ino_cnt; ++k) {
+	for (k = 0; k < ino_cnt; ++k)
 		buffer[k] = tmp[pos[k]];
-	}
 
 }
 

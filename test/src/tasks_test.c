@@ -209,7 +209,7 @@ TEST(tasks_tests, restore_fs_test)
 	fs_create(&fs1, &in3, 2000, 100, true);
 	fs_create(&fs1, &in1, 1001, 100, false);
 	fs_delete(&fs1, &in3);
-	// 3000 0000 03ff fe
+	/* 3000 0000 03ff fe */
 	tmp = malloc(fs1.alloc_table_size * fs1.sector_size);
 	tmp_cpy = malloc(fs1.alloc_table_size * fs1.sector_size);
 	disk_read(disk1, (char *) tmp, fs1.alloc_table,
@@ -219,7 +219,7 @@ TEST(tasks_tests, restore_fs_test)
 	tmp[2] = 0xFF;
 	disk_write(disk1, (char *) tmp, fs1.alloc_table,
 		fs1.alloc_table_size);
-	// 30FF FF00 03ff fe
+	/* 30FF FF00 03ff fe */
 	restore_fs(&fs1);
 	disk_read(disk1, (char *) tmp, fs1.alloc_table,
 		fs1.alloc_table_size);

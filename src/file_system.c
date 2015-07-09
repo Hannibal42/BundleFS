@@ -3,14 +3,14 @@
 
 bool free_disk_space(struct FILE_SYSTEM *fs, uint size);
 bool resize_inode_block(struct FILE_SYSTEM *fs);
-void load_all_tab(uint8_t *buffer,struct FILE_SYSTEM *fs);
+void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 
 enum FSRESULT fs_mkfs(struct disk *disk)
 {
-	uint i, tmp;
+	uint i;
 	struct FILE_SYSTEM *fs;
-	unsigned long sec_cnt, sec_size, fil_cnt, size, dif;
+	unsigned long sec_cnt, sec_size, fil_cnt, size;
 
 	/*Gets the sector size*/
 	if (disk_ioctl(disk, GET_SECTOR_SIZE, &sec_size) != RES_OK)
@@ -30,58 +30,43 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	/*The number of sectors needed for the allocation table*/
 	fs->alloc_table_size = div_up(sec_cnt, sec_size * 8);
 	fs->alloc_table = 1;
-	size = sec_size * fs->alloc_table_size;
-	/*Calculates the padding of the sector*/
-	dif = div_up(sec_cnt, 8) % sec_size;
-	dif += (fs->alloc_table_size - 1) * sec_size;
-	if (sec_cnt % 8 != 0)
-		dif = dif - 1;
-	for (i = 0; i < size; ++i) {
-		if (i >= dif)
-			AT_BUFFER[i] = 0xFF;
-		else
-			AT_BUFFER[i] = 0x00;
-	}
-
-	disk_write(disk, (char *) AT_BUFFER, fs->alloc_table, fs->alloc_table_size);
-
 	/*Make inode_alloc_table*/
-	fs->inode_alloc_table_size = div_up(fil_cnt, sec_size * 8);
+	fs->inode_alloc_table_size = fs->alloc_table_size;
 	fs->inode_alloc_table = fs->alloc_table + fs->alloc_table_size;
-
-	size = sec_size * fs->inode_alloc_table_size;
-
-	dif = div_up(fil_cnt, 8) % sec_size;
-	dif += (fs->inode_alloc_table_size - 1) * sec_size;
-	if (sec_cnt % 8 != 0)
-		dif = dif - 1;
-	for (i = 0; i < size; ++i) {
-		if (i >= dif)
-			IT_BUFFER[i] = 0xFF;
-		else
-			IT_BUFFER[i] = 0x00;
-	}
-	disk_write(disk, (char *) IT_BUFFER, fs->inode_alloc_table,
-	fs->inode_alloc_table_size);
-
-	/*Make superblock*/
 	fs->inode_sec = sec_size / sizeof(struct INODE);
-	fs->inode_max = fil_cnt - (fil_cnt % fs->inode_sec); /*TODO: This is 0 if fil_cnt < inode_sec */
+	/*This becomes 0 if fil_cnt < fs->inode_sec*/
+	fs->inode_max = fil_cnt - (fil_cnt % fs->inode_sec);
+	if (fs->inode_max == 0)
+		fs->inode_max = fs->inode_sec;
 	fs->inode_block_size = fs->inode_max / fs->inode_sec;
 	fs->inode_block = fs->inode_alloc_table + fs->inode_alloc_table_size;
 	fs->sector_size = sec_size;
 	fs->sector_count = sec_cnt;
 
+	/* Make Inode table */
+	size = sec_size * fs->inode_alloc_table_size;
+	for (i = 0; i < size; ++i)
+		IT_BUFFER[i] = 0xFF;
+
+	delete_seq(IT_BUFFER, 0, fs->inode_max);
+
+	disk_write(disk, (char *) IT_BUFFER, fs->inode_alloc_table,
+	fs->inode_alloc_table_size);
+
+	/* Make Allocation table */
+	size = sec_size * fs->alloc_table_size;
+	for (i = 0; i < size; ++i)
+		AT_BUFFER[i] = 0xFF;
+
+	size = sec_cnt - (fs->inode_block + fs->inode_block_size);
+	delete_seq(AT_BUFFER, 0, size);
+
+	disk_write(disk, (char *) AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size);
+
 	/*Write superblock*/
 	memcpy(SEC_BUFFER, fs, sizeof(struct FILE_SYSTEM));
 	disk_write(disk, (char *) SEC_BUFFER, 0, 1);
-
-	/* Update alloc_table padding */
-	disk_read(disk, (char *) AT_BUFFER, fs->alloc_table, fs->alloc_table_size);
-	tmp = sec_cnt;
-	tmp -= (fs->inode_block + fs->inode_block_size);
-	write_seq(AT_BUFFER, tmp, fs->inode_block + fs->inode_block_size);
-	disk_write(disk, (char *) AT_BUFFER, fs->alloc_table, fs->alloc_table_size);
 
 	free(fs);
 	fs = NULL;
@@ -100,9 +85,9 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 
 	offset = 0;
 	ino_pos = malloc(fs->inode_sec * sizeof(uint));
-	inodes = (struct INODE*) INO_BUFFER;
+	inodes = (struct INODE *) INO_BUFFER;
 
-	/*Loads a block with inodes, extracts the valid ones and 
+	/*Loads a block with inodes, extracts the valid ones and
 	compares their id to number*/
 	for (i = 0; i < fs->inode_block_size; ++i) {
 		get_ino_pos(fs, IT_BUFFER, offset, ino_pos, &ino_cnt);
@@ -112,7 +97,7 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 				goto END;
 		offset += fs->inode_sec;
 	}
-	END:
+END:
 
 	if (i >= fs->inode_block_size) {
 		free(ino_pos);
@@ -210,7 +195,8 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 		}
 		/* Adds the checksum to the end of the block */
 		SEC_BUFFER[k] = calc_fake_crc(0x00);
-		disk_write(fs->disk, (char *) SEC_BUFFER, file->location + i, 1);
+		disk_write(fs->disk, (char *) SEC_BUFFER,
+			file->location + i, 1);
 	}
 
 	/* Last sector, the padding needs to be used here */
@@ -313,9 +299,8 @@ unsigned long size, uint time_to_live, bool custody)
 				fs->inode_alloc_table_size);
 			ino_off = find_bit(IT_BUFFER, byt_ino_tab);
 
-		if (all_off < 0) {
+		if (all_off < 0)
 			return FS_FULL;
-		}
 	}
 
 	/* Write the buffer */
@@ -343,7 +328,8 @@ void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
 	uint32_t i;
 
 	for (i = 0; i < fs->alloc_table_size; ++i) {
-		disk_read(fs->disk, (char *) SEC_BUFFER, fs->alloc_table + i, 1);
+		disk_read(fs->disk, (char *) SEC_BUFFER,
+			fs->alloc_table + i, 1);
 		memcpy(buffer, SEC_BUFFER, fs->sector_size);
 	}
 }
@@ -353,7 +339,8 @@ void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
 	uint32_t i;
 
 	for (i = 0; i < fs->inode_alloc_table_size; ++i) {
-		disk_read(fs->disk, (char *) SEC_BUFFER, fs->inode_alloc_table + i, 1);
+		disk_read(fs->disk, (char *) SEC_BUFFER,
+			fs->inode_alloc_table + i, 1);
 		memcpy(buffer, SEC_BUFFER, fs->sector_size);
 	}
 }
@@ -391,9 +378,8 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 	tmp = fs->sector_count - (fs->inode_block + fs->inode_block_size);
 	tmp -= 1;
 
-	if (!check_seq(AT_BUFFER, tmp, 1)) {
+	if (!check_seq(AT_BUFFER, tmp, 1))
 		return false;
-	}
 
 	write_seq(AT_BUFFER, tmp, 1);
 	delete_seq(IT_BUFFER, fs->inode_max, fs->inode_sec);
