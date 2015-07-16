@@ -31,7 +31,7 @@ enum DRESULT disk_shutdown(struct disk *disk)
 	return RES_OK;
 }
 
-enum DRESULT disk_read(struct disk *disk, char *buff, uint sector,
+enum DRESULT disk_read(struct disk *disk, uint8_t *buff, uint sector,
 	uint number_of_sectors)
 {
 	if (!disk)
@@ -43,12 +43,12 @@ enum DRESULT disk_read(struct disk *disk, char *buff, uint sector,
 		return RES_PARERR;
 
 	fseek(disk->file, sector * disk->sector_size, SEEK_SET);
-	fread(buff, sizeof(char), number_of_bytes, disk->file);
+	fread((char *) buff, sizeof(char), number_of_bytes, disk->file);
 
 	return RES_OK;
 }
 
-enum DRESULT disk_write(struct disk *disk, char *buff, uint sector,
+enum DRESULT disk_write(struct disk *disk, uint8_t *buff, uint sector,
 	uint number_of_sectors)
 {
 	if (!disk)
@@ -60,7 +60,7 @@ enum DRESULT disk_write(struct disk *disk, char *buff, uint sector,
 		return RES_PARERR;
 
 	fseek(disk->file, sector * disk->sector_size, SEEK_SET);
-	fwrite(buff, sizeof(char), number_of_bytes, disk->file);
+	fwrite((char *) buff, sizeof(char), number_of_bytes, disk->file);
 	/* Writes the cache to disk */
 	fflush(disk->file);
 

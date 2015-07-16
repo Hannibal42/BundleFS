@@ -34,14 +34,14 @@ int main(void)
 
 	fs_delete(&fs, &fil);
 
-	for (i = 0; i < 100; ++i) {
+	for (i = 0; i < 1000; ++i) {
 		fil.id = i;
 		fs_create(&fs, &fil, fs.sector_size, 1, true);
 		fs_write(&fs, &fil, (char *) buf);
 		fs_read(&fs, &fil, (char *) buf, fs.sector_size);
 	}
 
-	for (i = 0; i < 100; ++i)
+	for (i = 0; i < 1000; ++i)
 		if (fs_open(&fs, i * 2, &fil) == FS_OK)
 			fs_delete(&fs, &fil);
 

@@ -50,7 +50,6 @@ void print_disk(struct disk *disk)
 void print_inode(struct INODE *file)
 {
 	printf("-----------------------Inode-----------------------\n");
-	printf("ID: %d\n", file->id);
 	printf("size: %d\n", file->size);
 	printf("location: %d\n", file->location);
 	printf("inode offset: %d\n", file->inode_offset);

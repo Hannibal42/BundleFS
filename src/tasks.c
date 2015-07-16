@@ -14,7 +14,7 @@ void defragment(struct FILE_SYSTEM *fs)
 	load_inodes_block(fs, inodes);
 
 	al_tab_sec = fs->alloc_table_size * fs->sector_size;
-	disk_read(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
+	disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
 		fs->alloc_table_size);
 
 	/* The Inodes are sorted by their location */
@@ -34,14 +34,14 @@ void defragment(struct FILE_SYSTEM *fs)
 		}
 
 		write_seq(AT_BUFFER, tmp, sec_cnt);
-		disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
+		disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
 			fs->alloc_table_size);
 
 		/* Makes a copy of the file block by block*/
 		for (r = 0; r < sec_cnt; ++r) {
-			disk_read(fs->disk, (char *) SEC_BUFFER,
+			disk_read(fs->disk, SEC_BUFFER,
 				inodes[i].location + r, 1);
-			disk_write(fs->disk, (char *) SEC_BUFFER,
+			disk_write(fs->disk, SEC_BUFFER,
 				(fs->sector_count - (tmp + sec_cnt)) + r, 1);
 		}
 
@@ -54,7 +54,7 @@ void defragment(struct FILE_SYSTEM *fs)
 			k = inodes[i].location;
 			delete_seq(AT_BUFFER,
 				fs->sector_count - old_loc - sec_cnt, sec_cnt);
-			disk_write(fs->disk, (char *) AT_BUFFER,
+			disk_write(fs->disk, AT_BUFFER,
 				fs->alloc_table, fs->alloc_table_size);
 			continue;
 		}
@@ -64,18 +64,18 @@ void defragment(struct FILE_SYSTEM *fs)
 
 		/* Copy file to the right place */
 		for (r = 0; r < sec_cnt; ++r) {
-			disk_write(fs->disk, (char *) SEC_BUFFER,
+			disk_write(fs->disk, SEC_BUFFER,
 				(fs->sector_count - (tmp + sec_cnt)) + r, 1);
-			disk_write(fs->disk, (char *) SEC_BUFFER,
+			disk_write(fs->disk, SEC_BUFFER,
 				k - sec_cnt + r, 1);
 		}
 
-		disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
+		disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
 			fs->alloc_table_size);
 		inodes[i].location = k - sec_cnt;
 		write_inode(fs, &inodes[i]);
 		delete_seq(AT_BUFFER, tmp, sec_cnt);
-		disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
+		disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
 			fs->alloc_table_size);
 		k = inodes[i].location;
 	}
@@ -97,7 +97,8 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 
 	for (i = 0; i < in_cnt; ++i) {
 		if (inodes[i].size > 0 && isNotValid(&inodes[i])) {
-			tmp[i * 2] = inodes[i].id;
+			//TODO: Change
+			//tmp[i * 2] = inodes[i].id;
 			tmp[i * 2 + 1] = inodes[i].inode_offset;
 			fs_delete(fs, &inodes[i]);
 		}
@@ -142,7 +143,7 @@ void restore_fs(struct FILE_SYSTEM *fs)
 		write_seq(AT_BUFFER, tmp, ino_size);
 	}
 
-	disk_write(fs->disk, (char *) AT_BUFFER, fs->alloc_table,
+	disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
 		fs->alloc_table_size);
 
 	free(inodes);

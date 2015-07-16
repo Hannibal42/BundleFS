@@ -39,9 +39,9 @@ uint inodes_used(struct FILE_SYSTEM *fs);
 /* Writes the given inode to disk */
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 /* Reads the inode at file->location */
-void read_inode(struct FILE_SYSTEM *fs, struct INODE *file);
+//void read_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 /* Loads all inodes from disk and stores them in buffer */
-void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer);
+//void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer);
 
 void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer);
 

@@ -98,9 +98,9 @@ TEST(system_tests, mul_read_writes_test)
 			TEST_ASSERT_EQUAL(FS_OK, fs_create(&fs, &tmp,
 				100, 100, false));
 			TEST_ASSERT_EQUAL(FS_OK, fs_write(&fs, &tmp,
-				(char *) data[0]));
+				data[0]));
 			TEST_ASSERT_EQUAL(FS_OK, fs_read(&fs, &tmp,
-				(char *) buffer, 100));
+				buffer, 100));
 			for (r = 0; r < 100; ++r)
 				TEST_ASSERT_EQUAL_HEX8(data[0][r], buffer[r]);
 			TEST_ASSERT_EQUAL(FS_OK, fs_delete(&fs, &tmp));

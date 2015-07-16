@@ -2,6 +2,7 @@
 #define DISK_INTERFACE_H
 
 #include <stdio.h>
+#include <stdint.h>
 #include <time.h>
 #include "disk.h"
 /* Command code for disk_ioctrl function */
@@ -33,10 +34,10 @@ enum DRESULT disk_initialize(struct disk *disk);
 /*Closes the filehandler*/
 enum DRESULT disk_shutdown(struct disk *disk);
 /*Reads from sector and stores the result in buff*/
-enum DRESULT disk_read(struct disk *disk, char *buff, uint sector,
+enum DRESULT disk_read(struct disk *disk, uint8_t *buff, uint sector,
 	uint number_of_sectors);
 /*Writes buff starting from sector*/
-enum DRESULT disk_write(struct disk *disk, char *buff, uint sector,
+enum DRESULT disk_write(struct disk *disk, uint8_t *buff, uint sector,
 	uint number_of_sectors);
 /*Returns information about the disk, see the defines for cmd*/
 enum DRESULT disk_ioctl(struct disk *disk, char cmd, unsigned long *buff);

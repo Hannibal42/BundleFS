@@ -29,10 +29,10 @@ enum FSRESULT fs_close(struct FILE_SYSTEM *fs, struct INODE *file);
 enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file);
 /* Reads the file from disk */
 enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
-	char *buffer, uint length);
+	uint8_t *buffer, uint length);
 /* Writes the file to the disk */
 enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
-	char *buffer);
+	uint8_t *buffer);
 /* Creates the ondisk structures for the file system */
 enum FSRESULT fs_mkfs(struct disk *disk);
 /* Reads the fs from the given disk*/

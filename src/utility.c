@@ -349,27 +349,6 @@ bool isNotValid(struct INODE *inode)
 		return t > inode->time_to_live;
 }
 
-
-
-/* file has to have the right offset of the inode you want to load */
-void read_inode(struct FILE_SYSTEM *fs, struct INODE *file)
-{
-	struct INODE *tmp;
-	uint sec_off, ino_off, divisor;
-
-	divisor = fs->sector_size / sizeof(struct INODE);
-
-	sec_off = file->inode_offset;
-	ino_off = sec_off % divisor;
-	sec_off /= divisor;
-	sec_off += fs->inode_block;
-
-	disk_read(fs->disk, (char *) SEC_BUFFER, sec_off, 1);
-
-	tmp = (struct INODE *) SEC_BUFFER;
-	memcpy(file, &tmp[ino_off], sizeof(struct INODE));
-}
-
 /* Writes a single inode onto the disk */
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 {
@@ -383,12 +362,12 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 	sec_off /= divisor;
 	sec_off += fs->inode_block;
 
-	disk_read(fs->disk, (char *) SEC_BUFFER, sec_off, 1);
+	disk_read(fs->disk, SEC_BUFFER, sec_off, 1);
 
 	tmp = (struct INODE *) SEC_BUFFER;
 	memcpy(&tmp[ino_off], file, sizeof(struct INODE));
 
-	disk_write(fs->disk, (char *) tmp, sec_off, 1);
+	disk_write(fs->disk, (uint8_t *) tmp, sec_off, 1);
 }
 
 /* Returns the number of inodes that are valid */
@@ -400,7 +379,7 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 	size = fs->inode_max / 8;
 
 	ret_val = 0;
-	disk_read(fs->disk, (char *) IT_BUFFER, fs->inode_alloc_table,
+	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
 	for (i = 0; i < size; ++i)
 		ret_val += popcount(IT_BUFFER[i]);
@@ -413,31 +392,6 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 
 	return ret_val;
 }
-
-/* This needs to be called with a buffer that can hold all inodes! */
-/* Deprecated! */
-void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
-{
-	uint i, k, r;
-	uint8_t tmp_byte;
-
-	disk_read(fs->disk, (char *) IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
-
-	r = 0;
-	for (i = 0; i < (fs->inode_max / 8); ++i) {
-		for (k = 0; k < 8; ++k) {
-			tmp_byte = (0x80 >> k);
-			if (IT_BUFFER[i] & tmp_byte) {
-				tmp_byte = i * 8 + k;
-				buffer[r].inode_offset = tmp_byte;
-				read_inode(fs, &buffer[r]);
-				++r;
-			}
-		}
-	}
-}
-
 
 /* Returns the position of all inodes in a block */
 void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
@@ -471,7 +425,7 @@ void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
 	uint k;
 	struct INODE *tmp;
 
-	disk_read(fs->disk, (char *) SEC_BUFFER, fs->inode_block + sec_num, 1);
+	disk_read(fs->disk, SEC_BUFFER, fs->inode_block + sec_num, 1);
 
 	tmp = (struct INODE *) SEC_BUFFER;
 	for (k = 0; k < ino_cnt; ++k)
@@ -479,13 +433,12 @@ void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
 
 }
 
-
 /* Loads all inodes into the buffer, the inodes are loaded block by block */
 void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
 	uint i, *ino_pos, ino_cnt, offset, ino_off;
 
-	disk_read(fs->disk, (char *) IT_BUFFER, fs->inode_alloc_table,
+	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
 		fs->inode_alloc_table_size);
 
 	offset = 0;
