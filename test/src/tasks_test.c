@@ -130,7 +130,7 @@ TEST(tasks_tests, defragment_test2)
 	}
 
 	for (i = 3; i < 8; ++i) {
-		//tmp.id = i;
+		tmp.inode_offset = i;
 		fs_create(&fs1, &tmp, fs1.sector_size * 2, 1, true);
 		inodes[i] = tmp;
 		fs_write(&fs1, &tmp, data2);
@@ -152,8 +152,7 @@ TEST(tasks_tests, defragment_test2)
 
 	buf = malloc(fs1.sector_size * 2);
 	for (i = 1; i < 4; ++i) {
-		//TODO: Change
-		//fs_open(&fs1, inodes[i * 2 + 1].id, &tmp);
+		fs_open(&fs1, inodes[i * 2 + 1].inode_offset, &tmp);
 		TEST_ASSERT_EQUAL(inodes[i * 2 + 1].size, tmp.size);
 		fs_read(&fs1, &tmp, buf, tmp.size);
 
@@ -187,11 +186,10 @@ TEST(tasks_tests, delete_invalid_inodes_test)
 	tmp = free_disk_space - (fs1.sector_size * 4);
 	TEST_ASSERT_EQUAL_UINT(tmp, fs_getfree(&fs1));
 
-	//TODO: Change
-	//ret_val = fs_open(&fs1, in3.id, &in3);
-	//TEST_ASSERT_EQUAL(FS_ERROR, ret_val);
-	//ret_val = fs_open(&fs1, in4.id, &in4);
-	//TEST_ASSERT_EQUAL(FS_ERROR, ret_val);
+	ret_val = fs_open(&fs1, in3.inode_offset, &in3);
+	TEST_ASSERT_EQUAL(FS_PARAM_ERROR, ret_val);
+	ret_val = fs_open(&fs1, in4.inode_offset, &in4);
+	TEST_ASSERT_EQUAL(FS_PARAM_ERROR, ret_val);
 }
 
 TEST(tasks_tests, restore_fs_test)

@@ -25,20 +25,20 @@ int main(void)
 	}
 
 	fs_create(&fs, &fil, fs.sector_size, 1, true);
-	fs_write(&fs, &fil, (char *) buf );
+	fs_write(&fs, &fil, buf );
 
 	for (i = 0; i < fs.sector_size; ++i)
 		buf[i] = 0x00;
 
-	fs_read(&fs, &fil, (char *) buf, fs.sector_size);
+	fs_read(&fs, &fil, buf, fs.sector_size);
 
 	fs_delete(&fs, &fil);
 
 	for (i = 0; i < 1000; ++i) {
-		fil.id = i;
+		fil.inode_offset = i;
 		fs_create(&fs, &fil, fs.sector_size, 1, true);
-		fs_write(&fs, &fil, (char *) buf);
-		fs_read(&fs, &fil, (char *) buf, fs.sector_size);
+		fs_write(&fs, &fil, buf);
+		fs_read(&fs, &fil, buf, fs.sector_size);
 	}
 
 	for (i = 0; i < 1000; ++i)
@@ -49,14 +49,6 @@ int main(void)
 	defragment(&fs);
 	printf("Delete Invalid Inodes \n");
 	delete_invalid_inodes(&fs);
-
-	/*
-	for (i = 0; i < 100; ++i) {
-		fil.id = i;
-		fs_create(&fs, &fil,2 * fs.sector_size, 1, true);
-		fs_write(&fs, &fil, (char *) buf);
-		fs_read(&fs, &fil, (char *) buf,2 * fs.sector_size);
-	}*/
 
 	return 0;
 }
