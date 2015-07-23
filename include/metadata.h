@@ -7,7 +7,6 @@
 
 /* File system information */
 struct FILE_SYSTEM {
-	ushort id;
 	uint sector_size;
 	uint sector_count;
 	/* Pointer to the disk the fs is belonging to */

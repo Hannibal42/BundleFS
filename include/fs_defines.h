@@ -1,8 +1,11 @@
 #ifndef FS_DEFINES_H
 #define FS_DEFINES_H
 
+/* The size of the allocation tables in byte */
 #define AT_SIZE 16000
+/* The size of one sector in byte */
 #define SECTOR_SIZE 4098
-
+/* Defines the minimum number of Inodes for the start */
+#define INODE_CNT 8
 
 #endif /* FS_DEFINES_H */

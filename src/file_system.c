@@ -22,8 +22,8 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 
 	fs = malloc(sizeof(struct FILE_SYSTEM));
 
-	/*TODO:Change this to a better thing*/
-	fil_cnt = sec_cnt / 8;
+	/* Defines the start value of inodes */
+	fil_cnt = INODE_CNT;
 	if (fil_cnt < 8)
 		fil_cnt = 8;
 
@@ -223,7 +223,7 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
 	disk_read(disk, SEC_BUFFER, 0, 1);
 
 	memcpy(fs, SEC_BUFFER, sizeof(struct FILE_SYSTEM));
-	fs->disk = disk; /*TODO: Remove this in the working system */
+	fs->disk = disk;
 
 	return FS_OK;
 }

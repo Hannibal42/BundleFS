@@ -17,7 +17,7 @@ int find_bit(const uint8_t *table, uint length);
 int find_seq(const uint8_t *table, uint table_size, uint length);
 /* Writes a sequence of 1 */
 void write_seq(uint8_t *table, uint index, uint length);
-/* Lets the bits toggle */
+/* TODO Lets the bits toggle */
 void delete_seq(uint8_t *table, uint index, uint length);
 int first_free_bits(uint8_t byte);
 int last_free_bits(uint8_t byte);
@@ -38,10 +38,6 @@ bool isNotValid(struct INODE *inode);
 uint inodes_used(struct FILE_SYSTEM *fs);
 /* Writes the given inode to disk */
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
-/* Reads the inode at file->location */
-//void read_inode(struct FILE_SYSTEM *fs, struct INODE *file);
-/* Loads all inodes from disk and stores them in buffer */
-//void load_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer);
 
 void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer);
 

@@ -1,5 +1,8 @@
 #include "tasks_test.h"
 
+#include <unistd.h>
+#include <sys/time.h>
+
 struct disk *disk1;
 struct FILE_SYSTEM fs1;
 struct INODE in1, in2, in3, in4;
@@ -227,10 +230,75 @@ TEST(tasks_tests, restore_fs_test)
 	free(tmp_cpy);
 }
 
+TEST(tasks_tests, restore_fs_test2)
+{
+	int i;
+	uint8_t *tmp, *tmp_cpy;
+
+	fs_mount(disk1, &fs1);
+
+	fs_create(&fs1, &in1, 100, 1000, false);
+	fs_create(&fs1, &in2, 500, 100, false);
+	fs_delete(&fs1, &in1);
+	fs_create(&fs1, &in3, 200, 100, true);
+	fs_create(&fs1, &in1, 1001, 100, false);
+	fs_delete(&fs1, &in3);
+	/* 3fe1 ffff 0000 001f */
+	tmp = malloc(fs1.alloc_table_size * fs1.sector_size);
+	tmp_cpy = malloc(fs1.alloc_table_size * fs1.sector_size);
+	disk_read(disk1, tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+	memcpy(tmp_cpy, tmp, fs1.alloc_table_size * fs1.sector_size);
+	for (i = 0; i < fs1.alloc_table_size * fs1.sector_size; ++i)
+		tmp[i] = 0xFF;
+	disk_write(disk1, tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+
+	restore_fs(&fs1);
+	disk_read(disk1, tmp, fs1.alloc_table,
+		fs1.alloc_table_size);
+
+	for (i = 0; i  < fs1.alloc_table_size * fs1.sector_size; ++i)
+		TEST_ASSERT_EQUAL_HEX8(tmp_cpy[i], tmp[i]);
+
+	free(tmp);
+	free(tmp_cpy);
+}
+
+TEST(tasks_tests, delete_invalid_inodes_test2)
+{
+	uint i, now;
+	struct timeval t;
+	int tmp;
+
+	fs_mount(disk1, &fs1);
+
+	gettimeofday(&t, NULL);
+	now = (uint) t.tv_sec;
+
+	tmp = 1;
+	for (i = 0; i < 10; ++i) {
+		fs_create(&fs1, &in1, 100, now + tmp, true);
+		tmp *= -1;
+	}
+
+	TEST_ASSERT_EQUAL_UINT(10, inodes_used(&fs1));
+	delete_invalid_inodes(&fs1);
+	TEST_ASSERT_EQUAL_UINT(5, inodes_used(&fs1));
+
+	sleep(2);
+
+	delete_invalid_inodes(&fs1);
+	TEST_ASSERT_EQUAL_UINT(0, inodes_used(&fs1));
+
+}
+
 TEST_GROUP_RUNNER(tasks_tests)
 {
 	RUN_TEST_CASE(tasks_tests, defragment_test);
 	RUN_TEST_CASE(tasks_tests, defragment_test2);
 	RUN_TEST_CASE(tasks_tests, delete_invalid_inodes_test);
+	RUN_TEST_CASE(tasks_tests, delete_invalid_inodes_test2);
 	RUN_TEST_CASE(tasks_tests, restore_fs_test);
+	RUN_TEST_CASE(tasks_tests, restore_fs_test2);
 }

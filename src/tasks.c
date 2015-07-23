@@ -82,69 +82,78 @@ void defragment(struct FILE_SYSTEM *fs)
 	free(inodes);
 }
 
-/* This should be a regular task executed by freeRTOS */
-/*TODO: Load the inodes block by block*/
+/* This should be a regular task executed by upcn */
 void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 {
-	uint i, in_cnt;
+	uint i, k, ino_cnt, *pos;
 	struct INODE *inodes;
 	uint *tmp;
 
-	in_cnt = inodes_used(fs);
-	tmp = malloc(in_cnt * sizeof(uint) * 2);
-	inodes = malloc(in_cnt * sizeof(struct INODE));
-	load_inodes_block(fs, inodes);
+	/* TODO: Maybe make tmp into a dynamic data structure */
+	tmp = malloc(inodes_used(fs) * sizeof(uint));
+	pos = malloc(fs->inode_sec * sizeof(uint));
+	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
 
-	for (i = 0; i < in_cnt; ++i) {
-		if (inodes[i].size > 0 && isNotValid(&inodes[i])) {
-			//TODO: Change
-			//tmp[i * 2] = inodes[i].id;
-			tmp[i * 2 + 1] = inodes[i].inode_offset;
-			fs_delete(fs, &inodes[i]);
+	for (k = 0; k < fs->inode_block_size; ++k) {
+		get_ino_pos(fs, IT_BUFFER, fs->inode_sec * k, pos, &ino_cnt);
+		inodes = (struct INODE *) INO_BUFFER;
+		load_inode_block(fs, inodes, pos, ino_cnt, k);
+		for (i = 0; i < ino_cnt; ++i) {
+			if (isNotValid(&inodes[i])) {
+				tmp[k] = inodes[i].inode_offset;
+				fs_delete(fs, &inodes[i]);
+			}
 		}
 	}
 
 	/* TODO: Notify upcn which Bundles have expiered */
 	free(tmp);
-	free(inodes);
+	free(pos);
 }
 
 
 /* This function writes the allocation table new, this is used to fix
 blocks that are marked allocated, but dont belong to an inode */
-/*TODO: Load the inodes block by block*/
 void restore_fs(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
-	uint ino_cnt, tmp, ino_size, i;
+	uint ino_cnt, tmp, ino_size, i, k, *pos;
 
-	ino_cnt = inodes_used(fs);
-	inodes = malloc(ino_cnt * sizeof(struct INODE));
-	load_inodes_block(fs, inodes);
 
-	quicksort_inodes(inodes, ino_cnt);
-
+	/* Wipes the allocation table clean */
+	tmp = (fs->sector_count / 8);
 	for (i = 0; i < fs->alloc_table_size * fs->sector_size; ++i) {
-		if (i < (fs->sector_count / 8))
+		if (i < tmp)
 			AT_BUFFER[i] = 0x00;
 		else
 			AT_BUFFER[i] = 0xFF;
 	}
 
+	/* Write the superblock into the allocation table */
 	tmp = fs->sector_count;
 	tmp -= (fs->inode_block + fs->inode_block_size);
-	write_seq(AT_BUFFER, tmp, fs->inode_block +
-		fs->inode_block_size);
+	write_seq(AT_BUFFER, tmp, fs->inode_block + fs->inode_block_size);
 
-	for (i = 0; i < ino_cnt; i++) {
-		ino_size = div_up(inodes[i].size,
-					fs->sector_size - check_size());
-		tmp = fs->sector_count - inodes[i].location - ino_size;
-		write_seq(AT_BUFFER, tmp, ino_size);
+	/* Loads every valid inode and write it into the allocation table */
+	pos = malloc(fs->inode_sec * sizeof(uint));
+	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
+
+	for (k = 0; k < fs->inode_block_size; ++k) {
+		get_ino_pos(fs, IT_BUFFER, fs->inode_sec * k, pos, &ino_cnt);
+		inodes = (struct INODE *) INO_BUFFER;
+		load_inode_block(fs, inodes, pos, ino_cnt, k);
+		for (i = 0; i < ino_cnt; ++i) {
+			ino_size = div_up(inodes[i].size,
+				fs->sector_size - check_size());
+			tmp = fs->sector_count - inodes[i].location - ino_size;
+			write_seq(AT_BUFFER, tmp, ino_size);
+		}
 	}
 
 	disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
 		fs->alloc_table_size);
 
-	free(inodes);
+	free(pos);
 }

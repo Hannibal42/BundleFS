@@ -1,7 +1,7 @@
 #include "system_tests.h"
 
 struct disk disks[8];
-uint8_t *data[4];
+uint8_t *data[5];
 
 TEST_GROUP(system_tests);
 
@@ -51,8 +51,9 @@ TEST_SETUP(system_tests)
 	for (i = 0; i < 100000; ++i)
 		data[3][i] = 0xCC;
 
-
-	/* TODO: Make random data */
+	data[4] = malloc(10000);
+	for (i = 0; i < 10000; ++i)
+		data[4][i] = (uint8_t) rand();
 }
 
 TEST_TEAR_DOWN(system_tests)
@@ -61,7 +62,7 @@ TEST_TEAR_DOWN(system_tests)
 
 	for (i = 0; i < 8; ++i)
 		disk_shutdown(&disks[i]);
-	for (i = 0; i < 4; ++i)
+	for (i = 0; i < 5; ++i)
 			free(data[i]);
 }
 
@@ -110,8 +111,41 @@ TEST(system_tests, mul_read_writes_test)
 	free(buffer);
 }
 
+
+TEST(system_tests, different_data_test)
+{
+	uint i, k, r, n;
+	struct FILE_SYSTEM fs;
+	struct INODE tmp;
+	uint8_t *buffer;
+
+	buffer = malloc(100);
+
+
+	for (k = 0; k < 8; ++k) {
+		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs));
+		for (n = 0; n < 5; ++n) {
+			for (i = 0; i < 1000; ++i) {
+				TEST_ASSERT_EQUAL(FS_OK, fs_create(&fs, &tmp,
+					100, 100, false));
+				TEST_ASSERT_EQUAL(FS_OK, fs_write(&fs, &tmp,
+					data[n]));
+				TEST_ASSERT_EQUAL(FS_OK, fs_read(&fs, &tmp,
+					buffer, 100));
+				for (r = 0; r < 100; ++r)
+					TEST_ASSERT_EQUAL_HEX8(data[n][r],
+						buffer[r]);
+				TEST_ASSERT_EQUAL(FS_OK, fs_delete(&fs, &tmp));
+			}
+		}
+	}
+
+	free(buffer);
+}
+
 TEST_GROUP_RUNNER(system_tests)
 {
 	RUN_TEST_CASE(system_tests, overflow_disk_test);
 	RUN_TEST_CASE(system_tests, mul_read_writes_test);
+	RUN_TEST_CASE(system_tests, different_data_test);
 }
