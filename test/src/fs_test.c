@@ -217,6 +217,7 @@ TEST(fs_tests, find_ino_length_test)
 
 	fs_mount(disk1, &fs1);
 
+	TEST_ASSERT_FALSE(find_ino_length(&fs1, &tmp, 128));
 	fs_create(&fs1, &in1, 128, 100, false);
 	TEST_ASSERT_TRUE(find_ino_length(&fs1, &tmp, 128));
 	fs_create(&fs1, &in1, 128, 100, true);

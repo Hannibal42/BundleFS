@@ -2,6 +2,7 @@
 
 #include <buffer.h>
 
+
 /*Writes the given bit into the allocation table*/
 void write_bit(uint8_t *table, uint index, bool bit_value)
 {
@@ -309,6 +310,8 @@ int cmp_INODES(const void *a, const void *b)
 	return ret_val;
 }
 
+
+/* TODO: Does the qsort copy the list */
 void quicksort_inodes(struct INODE *inodes, int nitems)
 {
 	qsort(inodes, nitems, sizeof(struct INODE), cmp_INODES);
@@ -317,36 +320,44 @@ void quicksort_inodes(struct INODE *inodes, int nitems)
 /* Finds the first inode that can be deleted and returns that inode*/
 bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 {
-	uint i, tmp;
+	uint i, k, ino_cnt, *pos;
 	struct INODE *inodes;
 
-	tmp = inodes_used(fs);
-	inodes = malloc(tmp * sizeof(struct INODE));
-	load_inodes_block(fs, inodes);
+	pos = malloc(fs->inode_sec * sizeof(uint));
+	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size);
 
-	for (i = 0; i < tmp; ++i) {
-		if (inodes[i].size >= size) {
-			if (!inodes[i].custody || isNotValid(&inodes[i])) {
-				memcpy(file, &inodes[i], sizeof(struct INODE));
-				free(inodes);
-				return true;
+	for (k = 0; k < fs->inode_block_size; ++k) {
+		get_ino_pos(fs, IT_BUFFER, fs->inode_sec * k, pos, &ino_cnt);
+		inodes = (struct INODE *) INO_BUFFER;
+		load_inode_block(fs, inodes, pos, ino_cnt, k);
+		for (i = 0; i < ino_cnt; ++i) {
+			if (inodes[i].size >= size) {
+				if((!inodes[i].custody) || isNotValid(&inodes[i])) {
+					memcpy(file, &inodes[i], sizeof(struct INODE));
+					free(pos);
+					return true;
+				}
 			}
 		}
 	}
-	free(inodes);
+	free(pos);
 	return false;
 }
 
 bool isNotValid(struct INODE *inode)
 {
-	uint t;
+	uint now;
+	struct timeval t;
+
 	#ifdef BOARD_TEST
 		/*TODO: What is the right time on the board*/
-		t = 5;
+		now = 5;
 	#else
-		t = (uint) time(NULL);
+		gettimeofday(&t, NULL);
+		now = (uint) t.tv_sec;
 	#endif /* BOARD_TEST */
-		return t > inode->time_to_live;
+		return now > inode->time_to_live;
 }
 
 /* Writes a single inode onto the disk */

@@ -2,7 +2,13 @@
 #define UTILITY_H
 
 #include <stdint.h>
-#include <time.h>
+	
+#ifdef BOARD_TEST
+#else
+	#include <time.h>
+	#include <sys/time.h>
+#endif /* BOARD_TEST */
+
 #include <string.h>
 #include <stdbool.h>
 #include "disk.h"
