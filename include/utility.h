@@ -2,18 +2,13 @@
 #define UTILITY_H
 
 #include <stdint.h>
-	
-#ifdef BOARD_TEST
-#else
-	#include <time.h>
-	#include <sys/time.h>
-#endif /* BOARD_TEST */
 
 #include <string.h>
 #include <stdbool.h>
 #include "disk.h"
 #include "metadata.h"
 #include "disk_interface.h"
+#include "board_specifics.h"
 
 /*Writes the given bit into the allocation table*/
 void write_bit(uint8_t *table, uint index, bool value);
@@ -53,7 +48,8 @@ void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 	uint offset, uint *pos, uint *ino_cnt);
 
 /* TODO: Replace with the real crc calc onboard */
-uint calc_fake_crc(const uint value);
-void reset_fake_crc(void);
+//uint calc_fake_crc(const uint value);
+//void reset_fake_crc(void);
+//uint get_time();
 
 #endif /* UTILITY_H */

@@ -277,27 +277,6 @@ int popcount(uint8_t byte)
 	& 0xf;
 }
 
-/* TODO: Change this function for upcn*/
-uint check_size(void)
-{
-	return sizeof(uint);
-}
-
-uint calc_fake_crc(const uint value)
-{
-	static uint crc;
-
-	crc ^= value;
-	return crc;
-}
-
-void reset_fake_crc(void)
-{
-	uint tmp;
-
-	tmp = calc_fake_crc(0x00);
-	calc_fake_crc(tmp);
-}
 
 int cmp_INODES(const void *a, const void *b)
 {
@@ -347,17 +326,7 @@ bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 
 bool isNotValid(struct INODE *inode)
 {
-	uint now;
-	struct timeval t;
-
-	#ifdef BOARD_TEST
-		/*TODO: What is the right time on the board*/
-		now = 5;
-	#else
-		gettimeofday(&t, NULL);
-		now = (uint) t.tv_sec;
-	#endif /* BOARD_TEST */
-		return now > inode->time_to_live;
+		return get_time() > inode->time_to_live;
 }
 
 /* Writes a single inode onto the disk */

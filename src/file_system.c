@@ -245,7 +245,7 @@ unsigned long fs_getfree(struct FILE_SYSTEM *fs)
 }
 
 enum FSRESULT fs_create(struct FILE_SYSTEM *fs, struct INODE *file,
-unsigned long size, uint time_to_live, bool custody)
+uint32_t size, uint64_t time_to_live, bool custody)
 {
 	int all_off, ino_off;
 	uint bit_cnt, byt_ino_tab, byt_all_tab, sec_size;
