@@ -8,29 +8,24 @@ uint64_t get_time(void)
 
 	return (uint64_t) t.tv_sec;
 }
-/*
-unsigned int check_size(void)
-{
-	return sizeof(uint32_t);
-}*/
 
-/*uint32_t calc_crc32_8(uint8_t *input, unsigned int lenght)
+uint32_t calc_crc32_8(uint8_t *input, unsigned int lenght)
 {
-	CRC->CR = CRC_CR_RESET;
 	uint32_t i, len;
 	uint32_t *tmp;
+
+	reset_fake_crc();
 
 	tmp = (uint32_t *) input;
 	len = lenght / 4;
 	for (i = 0; i < len; ++i)
-		CRC->DR = tmp[i];
-	*/
+		calc_fake_crc(tmp[i]);
 	/* With a normal sector size this will never happen */
-	/*for (i = 0; i < (lenght % 4); ++i)
-		CRC->DR = input[lenght - (4 - i)];
+	for (i = 0; i < (lenght % 4); ++i)
+		calc_fake_crc(input[lenght - (4 - i)]);
 
-	return CRC->DR;
-}*/
+	return calc_fake_crc(0x00);
+}
 
 
 /* TODO: Change this function for upcn*/

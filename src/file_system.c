@@ -50,8 +50,9 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 
 	delete_seq(IT_BUFFER, 0, fs->inode_max);
 
-	disk_write(disk, IT_BUFFER, fs->inode_alloc_table,
-	fs->inode_alloc_table_size);
+	if (disk_write(disk, IT_BUFFER, fs->inode_alloc_table,
+	fs->inode_alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
 
 	/* Make Allocation table */
 	size = sec_size * fs->alloc_table_size;
@@ -61,12 +62,14 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	size = sec_cnt - (fs->inode_block + fs->inode_block_size);
 	delete_seq(AT_BUFFER, 0, size);
 
-	disk_write(disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
+	if (disk_write(disk, AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
 
 	/*Write superblock*/
 	memcpy(SEC_BUFFER, fs, sizeof(struct FILE_SYSTEM));
-	disk_write(disk, SEC_BUFFER, 0, 1);
+	if (disk_write(disk, SEC_BUFFER, 0, 1) != RES_OK)
+		return FS_DISK_ERROR;
 
 	free(fs);
 	fs = NULL;
@@ -80,8 +83,9 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	uint offset, sector;
 	uint8_t tmp;
 
-	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
+	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
 
 	offset = number % 8;
 	sector = number / 8;
@@ -93,7 +97,10 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	offset = (number % fs->inode_sec) * sizeof(struct INODE);
 	sector = number / fs->inode_sec;
 
-	disk_read(fs->disk, SEC_BUFFER, fs->inode_block + sector, 1);
+	if (disk_read(fs->disk, SEC_BUFFER, fs->inode_block + sector, 1)
+		!= RES_OK)
+		return FS_DISK_ERROR;
+
 	memcpy(file, &SEC_BUFFER[offset], sizeof(struct INODE));
 
 	return FS_OK;
@@ -108,19 +115,23 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	tmp = fs->sector_count - (file->location + bit_length);
 
 	/* Free bits in the allocation table */
-	disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
+	if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
 	delete_seq(AT_BUFFER, tmp, bit_length);
 
 	/*Free bit in inode_table*/
-	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
+	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
 	write_bit(IT_BUFFER, file->inode_offset, false);
 
-	disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
-	disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
+	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
+	if (disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
 
 	return FS_OK;
 }
@@ -129,6 +140,7 @@ enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
 	uint8_t *buffer, uint length)
 {
 	uint i, k, fil_sec, pad, sec_size;
+	uint32_t tmp;
 
 	if (length > file->size)
 		return FS_PARAM_ERROR;
@@ -138,30 +150,27 @@ enum FSRESULT fs_read(struct FILE_SYSTEM *fs, struct INODE *file,
 	pad = file->size % sec_size;
 
 	for (i = 0; i < (fil_sec - 1); ++i) {
-		reset_fake_crc();
-		disk_read(fs->disk, SEC_BUFFER, file->location + i, 1);
-		for (k = 0; k < sec_size; ++k) {
+		if (disk_read(fs->disk, SEC_BUFFER, file->location + i, 1)
+			!= RES_OK)
+			return FS_DISK_ERROR;
+		for (k = 0; k < sec_size; ++k)
 			buffer[i * sec_size + k] = SEC_BUFFER[k];
-			calc_fake_crc(buffer[i * sec_size + k]);
-		}
 		/* Checks the crc sum */
-		if (SEC_BUFFER[k] != calc_fake_crc(0x00))
+		tmp = con8to32(&SEC_BUFFER[sec_size]);
+		if (tmp != calc_crc32_8(SEC_BUFFER, sec_size))
 			return FS_CHECK_ERROR;
 	}
 
 	/* Last sector, the padding needs to be used here */
-	disk_read(fs->disk, SEC_BUFFER, file->location + i, 1);
-	reset_fake_crc();
-	for (k = 0; k < sec_size; ++k) {
-		if (k < pad) {
+	if (disk_read(fs->disk, SEC_BUFFER, file->location + i, 1) != RES_OK)
+		return FS_DISK_ERROR;
+
+	for (k = 0; k < sec_size; ++k)
+		if (k < pad)
 			buffer[i * sec_size + k] = SEC_BUFFER[k];
-			calc_fake_crc(buffer[i * sec_size + k]);
-		} else {
-			calc_fake_crc(0xFF);
-		}
-	}
 	/* Checks the crc sum */
-	if (SEC_BUFFER[k] != calc_fake_crc(0x00))
+	tmp = con8to32(&SEC_BUFFER[sec_size]);
+	if (tmp != calc_crc32_8(SEC_BUFFER, sec_size))
 		return FS_CHECK_ERROR;
 
 	return FS_OK;
@@ -171,37 +180,36 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 	uint8_t *buffer)
 {
 	uint i, k, fil_sec, pad, sec_size;
+	uint32_t tmp;
 
 	sec_size = fs->sector_size - check_size();
 	fil_sec = div_up(file->size, sec_size);
 	pad = file->size % sec_size;
 
 	for (i = 0; i < (fil_sec - 1); ++i) {
-		reset_fake_crc();
-		for (k = 0; k < sec_size; ++k) {
-			calc_fake_crc(buffer[i * sec_size + k]);
+		for (k = 0; k < sec_size; ++k)
 			SEC_BUFFER[k] = buffer[i * sec_size + k];
-		}
 		/* Adds the checksum to the end of the block */
-		SEC_BUFFER[k] = calc_fake_crc(0x00);
-		disk_write(fs->disk, SEC_BUFFER,
-			file->location + i, 1);
+		tmp = calc_crc32_8(SEC_BUFFER, sec_size);
+		con32to8(&SEC_BUFFER[sec_size], tmp);
+		if (disk_write(fs->disk, SEC_BUFFER,
+			file->location + i, 1) != RES_OK)
+			return FS_DISK_ERROR;
 	}
 
 	/* Last sector, the padding needs to be used here */
-	reset_fake_crc();
 	for (k = 0; k < sec_size; ++k) {
-		if (k < pad) {
-			calc_fake_crc(buffer[i * sec_size + k]);
+		if (k < pad)
 			SEC_BUFFER[k] = buffer[i * sec_size + k];
-		} else {
-			calc_fake_crc(0xFF);
+		else
 			SEC_BUFFER[k] = 0xFF;
-		}
 	}
 	/* Adds the checksum to the end of the block */
-	SEC_BUFFER[k] = calc_fake_crc(0x00);
-	disk_write(fs->disk, SEC_BUFFER, file->location + i, 1);
+	tmp = calc_crc32_8(SEC_BUFFER, sec_size);
+	con32to8(&SEC_BUFFER[sec_size], tmp);
+	if (disk_write(fs->disk, SEC_BUFFER, file->location + i, 1)
+		!= RES_OK)
+		return FS_DISK_ERROR;
 
 	return FS_OK;
 }
@@ -220,7 +228,8 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
 	if (disk_ioctl(disk, GET_SECTOR_SIZE, &sector_size) != RES_OK)
 		return FS_ERROR;
 
-	disk_read(disk, SEC_BUFFER, 0, 1);
+	if (disk_read(disk, SEC_BUFFER, 0, 1) != RES_OK)
+		return FS_DISK_ERROR;
 
 	memcpy(fs, SEC_BUFFER, sizeof(struct FILE_SYSTEM));
 	fs->disk = disk;
@@ -261,9 +270,10 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	ino_off = find_bit(IT_BUFFER, byt_ino_tab);
 	if (ino_off < 0) {
 		if (resize_inode_block(fs)) {
-			disk_read(fs->disk, IT_BUFFER,
+			if (disk_read(fs->disk, IT_BUFFER,
 				fs->inode_alloc_table,
-				fs->inode_alloc_table_size);
+				fs->inode_alloc_table_size) != RES_OK)
+				return FS_DISK_ERROR;
 			/* This mount is needed because the metadata changed */
 			fs_mount(fs->disk, fs);
 			++byt_ino_tab;
@@ -279,13 +289,15 @@ uint32_t size, uint64_t time_to_live, bool custody)
 
 	if (all_off < 0) {
 		if (free_disk_space(fs, size))
-			disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-				fs->alloc_table_size);
+			if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
+				fs->alloc_table_size) != RES_OK)
+				return FS_DISK_ERROR;
 			all_off = find_seq(AT_BUFFER, byt_all_tab,
 				bit_cnt);
-			disk_read(fs->disk, IT_BUFFER,
+			if (disk_read(fs->disk, IT_BUFFER,
 				fs->inode_alloc_table,
-				fs->inode_alloc_table_size);
+				fs->inode_alloc_table_size) != RES_OK)
+				return FS_DISK_ERROR;
 			ino_off = find_bit(IT_BUFFER, byt_ino_tab);
 
 		if (all_off < 0)
@@ -303,15 +315,18 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	file->inode_offset = ino_off;
 
 	/* Write all to disk */
-	disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
-	disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
+	if (disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
+	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
 	write_inode(fs, file);
 
 	return FS_OK;
 }
 
+/* TODO: Remove */
 void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
 {
 	uint32_t i;
@@ -323,6 +338,7 @@ void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
 	}
 }
 
+/* TODO: Remove */
 void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
 {
 	uint32_t i;
@@ -358,11 +374,13 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 {
 	uint tmp;
 
-	disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
+	if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size) != RES_OK)
+		return false;
 
-	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
+	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size) != RES_OK)
+		return false;
 
 	tmp = fs->sector_count - (fs->inode_block + fs->inode_block_size);
 	tmp -= 1;
@@ -373,17 +391,20 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 	write_seq(AT_BUFFER, tmp, 1);
 	delete_seq(IT_BUFFER, fs->inode_max, fs->inode_sec);
 
-	disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
+	if (disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size) != RES_OK)
+		return false;
 
-	disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
+	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size) != RES_OK)
+		return false;
 
 	/* Update superblock */
 	fs->inode_block_size += 1;
 	fs->inode_max += fs->inode_sec;
 	memcpy(SEC_BUFFER, fs, sizeof(struct FILE_SYSTEM));
-	disk_write(fs->disk, SEC_BUFFER, 0, 1);
+	if (disk_write(fs->disk, SEC_BUFFER, 0, 1) != RES_OK)
+		return false;
 
 	return true;
 }

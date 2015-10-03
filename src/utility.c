@@ -277,7 +277,6 @@ int popcount(uint8_t byte)
 	& 0xf;
 }
 
-
 int cmp_INODES(const void *a, const void *b)
 {
 	struct INODE *tmp_a, *tmp_b;
@@ -290,7 +289,7 @@ int cmp_INODES(const void *a, const void *b)
 }
 
 
-/* TODO: Does the qsort copy the list */
+/* TODO: Does the qsort copy the list? */
 void quicksort_inodes(struct INODE *inodes, int nitems)
 {
 	qsort(inodes, nitems, sizeof(struct INODE), cmp_INODES);
@@ -312,8 +311,10 @@ bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 		load_inode_block(fs, inodes, pos, ino_cnt, k);
 		for (i = 0; i < ino_cnt; ++i) {
 			if (inodes[i].size >= size) {
-				if((!inodes[i].custody) || isNotValid(&inodes[i])) {
-					memcpy(file, &inodes[i], sizeof(struct INODE));
+				if ((!inodes[i].custody) ||
+					isNotValid(&inodes[i])) {
+					memcpy(file, &inodes[i],
+						sizeof(struct INODE));
 					free(pos);
 					return true;
 				}
@@ -333,13 +334,11 @@ bool isNotValid(struct INODE *inode)
 void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 {
 	struct INODE *tmp;
-	uint sec_off, ino_off, divisor;
-
-	divisor = fs->sector_size / sizeof(struct INODE);
+	uint sec_off, ino_off;
 
 	sec_off = file->inode_offset;
-	ino_off = sec_off % divisor;
-	sec_off /= divisor;
+	ino_off = sec_off % fs->inode_sec;
+	sec_off /= fs->inode_sec;
 	sec_off += fs->inode_block;
 
 	disk_read(fs->disk, SEC_BUFFER, sec_off, 1);
@@ -347,7 +346,7 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file)
 	tmp = (struct INODE *) SEC_BUFFER;
 	memcpy(&tmp[ino_off], file, sizeof(struct INODE));
 
-	disk_write(fs->disk, (uint8_t *) tmp, sec_off, 1);
+	disk_write(fs->disk, SEC_BUFFER, sec_off, 1);
 }
 
 /* Returns the number of inodes that are valid */
@@ -423,7 +422,7 @@ void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
 
 	offset = 0;
 	ino_off = 0;
-	ino_pos = malloc(fs->inode_sec * sizeof(uint));
+	ino_pos = malloc(fs->inode_sec * sizeof(uint32_t));
 
 	for (i = 0; i < fs->inode_block_size; ++i) {
 		get_ino_pos(fs, IT_BUFFER, offset, ino_pos, &ino_cnt);
@@ -433,4 +432,17 @@ void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
 	}
 
 	free(ino_pos);
+}
+
+void con32to8(uint8_t *arr, uint32_t value)
+{
+	arr[0] = value >> 24;
+	arr[1] = (value >> 16) & 0xFF;
+	arr[2] = (value >> 8) & 0xFF;
+	arr[3] = value & 0xFF;
+}
+
+uint32_t con8to32(uint8_t *arr)
+{
+	return arr[0] << 24 | arr[1] << 16 | arr[2] << 8 | arr[3];
 }
