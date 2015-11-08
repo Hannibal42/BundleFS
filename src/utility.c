@@ -245,6 +245,90 @@ void delete_seq(uint8_t *table, uint index, uint length)
 	}
 }
 
+/* Delete function that can handle a allocation table that is to big for the allocation table buffer */
+/*
+void delete_seq_global(struct FILE_SYSTEM *fs, uint8_t *table_buffer, uint index, uint length)
+{
+	uint global_index, global_end, index_start, length_start, buffer_size_bit;
+
+	buffer_size_bit = fs->alloc_table_buffer_size * 8;
+	global_index = index / buffer_size_bit;
+	global_end = length / buffer_size_bit;
+	global_end += global_index;
+
+	index_start = index % buffer_size_bit;
+	length_start = buffer_size_bit - index_start;
+
+	if (length < length_start) {
+		length_start = length;
+	}
+*/
+	/* delete start sequenz *//*
+	disk_read(fs->disk, table_buffer, fs->alloc_table + global_index,
+		fs->alloc_table_buffer_size);
+	delete_seq(table_buffer, index_start, length_start);
+	disk_write(fs->disk, table_buffer, fs->alloc_table + global_index,
+		fs->alloc_table_buffer_size);
+	length -= length_start;
+
+	for (++global_index; global_index < global_end; ++global_index) {
+		disk_read(fs->disk, table_buffer, fs->alloc_table + global_index,
+			fs->alloc_table_buffer_size);
+		delete_seq(table_buffer, 0, buffer_size_bit);
+		disk_write(fs->disk, table_buffer, fs->alloc_table + global_index,
+			fs->alloc_table_buffer_size);
+		length -= buffer_size_bit;
+	}
+*/
+	/* delete end sequenz *//*
+	if (length > 0) {
+		disk_read(fs->disk, table_buffer, fs->alloc_table + global_index,
+			fs->alloc_table_buffer_size);
+		delete_seq(table_buffer, 0, length);
+		disk_write(fs->disk, table_buffer, fs->alloc_table + global_index,
+			fs->alloc_table_buffer_size);
+	}
+}*/
+
+/* Delete function that can handle a allocation table that is to big for the allocation table buffer */
+//TODO: Disk error handling
+void delete_seq_global(struct FILE_SYSTEM *fs, uint index, uint length)
+{
+	uint global_index, global_end, index_start, length_start, buffer_size_bit;
+	struct AT_WINDOW window;
+	init_window(&window, fs, AT_BUFFER);
+
+	buffer_size_bit = fs->alloc_table_buffer_size * 8;
+	global_index = index / buffer_size_bit;
+	global_end = length / buffer_size_bit;
+	global_end += global_index;
+
+	index_start = index % buffer_size_bit;
+	length_start = buffer_size_bit - index_start;
+
+	if (length < length_start) {
+		length_start = length;
+	}
+
+	//TODO: Check if the window is already at the right position
+	//TODO: Check if the move_window functions works
+	move_window(&window, global_index);
+	delete_seq(window.buffer, index_start, length_start);
+	length -= length_start;
+
+	for (++global_index; global_index < global_end; ++global_index) {
+		move_window(&window, global_index);
+		delete_seq(window.buffer, 0, buffer_size_bit);
+		length -= buffer_size_bit;
+	}
+
+	/* delete end sequenz */
+	if (length > 0) {
+		move_window(&window, global_index);
+		delete_seq(window.buffer, 0, length);
+	}
+}
+
 unsigned long div_up(unsigned long dividend,
 	unsigned long divisor)
 {
@@ -446,3 +530,5 @@ uint32_t con8to32(uint8_t *arr)
 {
 	return arr[0] << 24 | arr[1] << 16 | arr[2] << 8 | arr[3];
 }
+
+

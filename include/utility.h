@@ -49,4 +49,7 @@ void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 void con32to8(uint8_t *arr, uint32_t value);
 uint32_t con8to32(uint8_t *arr);
 
+
+void delete_seq_global(struct FILE_SYSTEM *fs, uint index, uint length);
+
 #endif /* UTILITY_H */

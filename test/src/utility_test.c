@@ -2,6 +2,9 @@
 
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
 uint8_t *data1, *data2, *data3;
+uint8_t *buffer, *at_buffer;
+struct disk *disk1;
+struct FILE_SYSTEM fs;
 
 extern int find_seq_byte(uint8_t byte, uint length);
 
@@ -38,6 +41,31 @@ TEST_SETUP(utility_tests)
 		data2[i] = 0xD0;
 	for (i = 0; i < 2048; ++i)
 		data3[i] = 0xEE;
+
+	/* For global function testing */
+	disk1 = malloc(sizeof(struct disk));
+	/*Struct setup*/
+	disk_fill(disk1, "disks/disk1.disk", 65536, 512);
+	disk_create(disk1, 65536);
+
+	buffer = malloc(65536);
+	at_buffer = malloc(4096);
+
+	disk_initialize(disk1);
+
+	for (i = 0; i < 16 * 4096; ++i)
+		buffer[i] = 0xFF;
+
+	disk_write(disk1, buffer, 0 ,15);
+	disk_shutdown(disk1);
+	disk_initialize(disk1);
+
+	fs.sector_size = 4096;
+	fs.sector_count = 16;
+	fs.disk = disk1;
+	fs.alloc_table = 0;
+	fs.alloc_table_size = 5;
+	fs.alloc_table_buffer_size = 4096;
 }
 
 TEST_TEAR_DOWN(utility_tests)
@@ -49,6 +77,9 @@ TEST_TEAR_DOWN(utility_tests)
 	free(data1);
 	free(data2);
 	free(data3);
+	free(buffer);
+	free(at_buffer);
+	free(disk1);
 }
 
 TEST(utility_tests, find_seq_small_test)
@@ -392,6 +423,19 @@ TEST(utility_tests, get_ino_pos_test)
 	free(pos);
 }
 
+TEST(utility_tests, delete_seq_global_test)
+{
+	//int i;
+
+	//delete_seq_global(&fs, at_buffer, 40, 10);
+
+	//disk_read(disk1, buffer, 0, 16);
+
+	//TEST_ASSERT_EQUAL_HEX8(0x00, buffer[5]);
+	//TEST_ASSERT_EQUAL_HEX8(0xCF, buffer[6]);
+
+}
+
 TEST_GROUP_RUNNER(utility_tests)
 {
 	RUN_TEST_CASE(utility_tests, get_ino_pos_test);
@@ -408,4 +452,5 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, find_seq_byte_test);
 	RUN_TEST_CASE(utility_tests, check_seq_test);
 	RUN_TEST_CASE(utility_tests, calc_fake_crc_test);
+	RUN_TEST_CASE(utility_tests, delete_seq_global_test);
 }
