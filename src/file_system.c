@@ -11,6 +11,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	uint i;
 	struct FILE_SYSTEM *fs;
 	unsigned long sec_cnt, sec_size, fil_cnt, size;
+	struct AT_WINDOW *window;
 
 	/*Gets the sector size*/
 	if (disk_ioctl(disk, GET_SECTOR_SIZE, &sec_size) != RES_OK)
@@ -57,13 +58,18 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	/* Make Allocation table */
 	size = sec_size * fs->alloc_table_size;
 	for (i = 0; i < size; ++i)
-		AT_BUFFER[i] = 0xFF;
+		SEC_BUFFER[i] = 0xFF;
+
+	for (i = 0; i < fs->alloc_table_size; ++i)
+		if (disk_write(fs->disk, SEC_BUFFER, fs->alloc_table + i, 1) != RES_OK)
+			return FS_DISK_ERROR;
+
+	window = malloc(sizeof(struct AT_WINDOW));
+	init_window(window, fs, AT_BUFFER);
+	fs->at_win = window;
 
 	size = sec_cnt - (fs->inode_block + fs->inode_block_size);
-	delete_seq(AT_BUFFER, 0, size);
-
-	if (disk_write(disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size) != RES_OK)
+	if (delete_seq_global(fs->at_win, 0, size))
 		return FS_DISK_ERROR;
 
 	/*Write superblock*/
@@ -71,6 +77,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	if (disk_write(disk, SEC_BUFFER, 0, 1) != RES_OK)
 		return FS_DISK_ERROR;
 
+	free(window);
 	free(fs);
 	fs = NULL;
 	return FS_OK;
@@ -233,6 +240,8 @@ enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
 
 	memcpy(fs, SEC_BUFFER, sizeof(struct FILE_SYSTEM));
 	fs->disk = disk;
+	fs->at_win = malloc(sizeof(struct AT_WINDOW));
+	init_window(fs->at_win, fs, AT_BUFFER);
 
 	return FS_OK;
 }

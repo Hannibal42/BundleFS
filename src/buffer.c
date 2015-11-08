@@ -7,7 +7,8 @@ bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
 	win->buffer = buffer;
 	win->global_start = fs->alloc_table;
 	win->global_end = fs->alloc_table + fs->alloc_table_size;
-	win->sectors = fs->alloc_table_buffer_size;
+	win->sectors = fs->alloc_table_buffer_size / fs->sector_size;
+	win->sector_size = fs->sector_size;
 	win->disk = fs->disk;
 
 	if (disk_read(win->disk, win->buffer, win->global_start, win->sectors) != RES_OK)

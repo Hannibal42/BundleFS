@@ -50,6 +50,6 @@ void con32to8(uint8_t *arr, uint32_t value);
 uint32_t con8to32(uint8_t *arr);
 
 
-void delete_seq_global(struct FILE_SYSTEM *fs, uint index, uint length);
+bool delete_seq_global(struct AT_WINDOW *win, uint index, uint length);
 
 #endif /* UTILITY_H */

@@ -16,6 +16,7 @@ struct AT_WINDOW {
 	uint8_t global_end;
 	/* the size of the buffer in multiples of the sector size */
 	uint8_t sectors;
+	uint8_t sector_size;
 	struct disk *disk;
 };
 
