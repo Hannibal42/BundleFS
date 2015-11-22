@@ -11,12 +11,12 @@ struct AT_WINDOW {
 	bool isValid;
 	uint8_t *buffer;
 	/* Index of the first sector that is currently in the buffer */
-	uint8_t global_index;
-	uint8_t global_start;
-	uint8_t global_end;
+	uint global_index;
+	uint global_start;
+	uint global_end;
 	/* the size of the buffer in multiples of the sector size */
-	uint8_t sectors;
-	uint8_t sector_size;
+	uint sectors;
+	uint sector_size;
 	struct disk *disk;
 };
 

@@ -17,7 +17,7 @@ static uint8_t __attribute__((__unused__)) INO_BUFFER[SECTOR_SIZE];
 /* Initilizes the AT_WINDOW struct and loads the first window*/
 bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer);
 /* Saves the content of the buffer and then moves the window and loads the new buffer */
-bool move_window(struct AT_WINDOW *win, uint8_t index);
+bool move_window(struct AT_WINDOW *win, uint index);
 /* Saves the content of the buffer to disk */
 bool save_window(struct AT_WINDOW *win);
 

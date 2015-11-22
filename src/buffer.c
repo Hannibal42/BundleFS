@@ -6,7 +6,7 @@ bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
 	win->isValid = false;
 	win->buffer = buffer;
 	win->global_start = fs->alloc_table;
-	win->global_end = fs->alloc_table + fs->alloc_table_size;
+	win->global_end = fs->alloc_table + fs->alloc_table_size - 1;
 	win->sectors = fs->alloc_table_buffer_size / fs->sector_size;
 	win->sector_size = fs->sector_size;
 	win->disk = fs->disk;
@@ -19,11 +19,9 @@ bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
 	return true;
 }
 
-bool move_window(struct AT_WINDOW *win, uint8_t index)
+bool move_window(struct AT_WINDOW *win, uint index)
 {
 	/* Parameter checking */
-	if (index < win->global_start)
-		return false;
 	if (index + win->sectors > win->global_end)
 		return false;
 
