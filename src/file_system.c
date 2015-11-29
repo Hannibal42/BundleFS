@@ -31,6 +31,7 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	/*The number of sectors needed for the allocation table*/
 	fs->alloc_table_size = div_up(sec_cnt, sec_size * 8);
 	fs->alloc_table = 1;
+	fs->alloc_table_buffer_size = AT_BUFFER_SIZE;
 	/*Make inode_alloc_table*/
 	fs->inode_alloc_table_size = fs->alloc_table_size;
 	fs->inode_alloc_table = fs->alloc_table + fs->alloc_table_size;
@@ -61,10 +62,11 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 		SEC_BUFFER[i] = 0xFF;
 
 	for (i = 0; i < fs->alloc_table_size; ++i)
-		if (disk_write(fs->disk, SEC_BUFFER, fs->alloc_table + i, 1) != RES_OK)
+		if (disk_write(disk, SEC_BUFFER, fs->alloc_table + i, 1) != RES_OK)
 			return FS_DISK_ERROR;
 
 	window = malloc(sizeof(struct AT_WINDOW));
+	fs->disk = disk;
 	init_window(window, fs, AT_BUFFER);
 	fs->at_win = window;
 

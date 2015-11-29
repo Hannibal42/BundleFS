@@ -8,6 +8,10 @@ bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
 	win->global_start = fs->alloc_table;
 	win->global_end = fs->alloc_table + fs->alloc_table_size - 1;
 	win->sectors = fs->alloc_table_buffer_size / fs->sector_size;
+	/* Just in case the alloc_table is smaller than the buffer... */
+	if (win->sectors > fs->alloc_table_size)
+		win->sectors = fs->alloc_table_size;
+
 	win->sector_size = fs->sector_size;
 	win->disk = fs->disk;
 
