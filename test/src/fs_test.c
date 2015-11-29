@@ -676,7 +676,7 @@ TEST(fs_tests, load_inodes_block)
 	load_inodes_block(&fs1, tmp);
 
 	for (i = 0; i < 3; ++i)
-		TEST_ASSERT_EQUAL_UINT(tmp[i].size, inodes[i].size);
+		TEST_ASSERT_EQUAL_UINT(inodes[i].size, tmp[i].size);
 
 	free(tmp);
 	fs_delete(&fs1, &inodes[1]);

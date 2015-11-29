@@ -309,13 +309,13 @@ bool delete_seq_global(struct AT_WINDOW *win, uint index, uint length)
 	}
 
 	//TODO: Check if the window is already at the right position
-	if (move_window(win, global_index))
+	if (!move_window(win, global_index))
 		return false;
 	delete_seq(win->buffer, index_start, length_start);
 	length -= length_start;
 
 	for (++global_index; global_index < global_end; ++global_index) {
-		if (move_window(win, global_index))
+		if (!move_window(win, global_index))
 			return false;
 		delete_seq(win->buffer, 0, buffer_size_bit);
 		length -= buffer_size_bit;
@@ -323,11 +323,11 @@ bool delete_seq_global(struct AT_WINDOW *win, uint index, uint length)
 
 	/* delete end sequenz */
 	if (length > 0) {
-		if (move_window(win, global_index))
+		if (!move_window(win, global_index))
 			return false;
 		delete_seq(win->buffer, 0, length);
 	}
-	if (save_window(win))
+	if (!save_window(win))
 		return false;
 	return true;
 }

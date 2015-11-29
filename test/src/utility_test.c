@@ -1,4 +1,5 @@
 #include "utility_test.h"
+#include "buffer.h"
 
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
 uint8_t *data1, *data2, *data3;
@@ -66,6 +67,9 @@ TEST_SETUP(utility_tests)
 	fs.alloc_table = 0;
 	fs.alloc_table_size = 5;
 	fs.alloc_table_buffer_size = 4096;
+	struct AT_WINDOW *window = malloc(sizeof(struct AT_WINDOW));
+	init_window(window, &fs, at_buffer);
+	fs.at_win = window;
 }
 
 TEST_TEAR_DOWN(utility_tests)
@@ -78,6 +82,7 @@ TEST_TEAR_DOWN(utility_tests)
 	free(data2);
 	free(data3);
 	free(buffer);
+	free(fs.at_win);
 	free(at_buffer);
 	free(disk1);
 }
@@ -425,14 +430,23 @@ TEST(utility_tests, get_ino_pos_test)
 
 TEST(utility_tests, delete_seq_global_test)
 {
-	//int i;
+	int i;
 
-	//delete_seq_global(&fs, at_buffer, 40, 10);
+	TEST_ASSERT_TRUE(delete_seq_global(fs.at_win, 40, 10));
 
-	//disk_read(disk1, buffer, 0, 16);
+	disk_read(disk1, buffer, 0, 16);
 
-	//TEST_ASSERT_EQUAL_HEX8(0x00, buffer[5]);
-	//TEST_ASSERT_EQUAL_HEX8(0xCF, buffer[6]);
+	TEST_ASSERT_EQUAL_HEX8(0x00, buffer[5]);
+	TEST_ASSERT_EQUAL_HEX8(0x3F, buffer[6]);
+
+	TEST_ASSERT_TRUE(delete_seq_global(fs.at_win, 5000 * 8, 10));
+
+	
+	disk_read(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_EQUAL_HEX8(0x00, buffer[5000]);
+	TEST_ASSERT_EQUAL_HEX8(0x3F, buffer[5001]);
+	
 
 }
 
