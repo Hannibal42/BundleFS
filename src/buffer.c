@@ -23,10 +23,10 @@ bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
 	return true;
 }
 
-bool move_window(struct AT_WINDOW *win, uint index)
+bool move_window(struct AT_WINDOW *win, int index)
 {
 	/* Parameter checking */
-	if (index + win->sectors > win->global_end)
+	if (index + win->sectors > win->global_end || index < 0)
 		return false;
 
 	/* Save and new load */

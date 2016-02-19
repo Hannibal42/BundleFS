@@ -37,6 +37,9 @@ enum DRESULT disk_read(struct disk *disk, uint8_t *buff, uint sector,
 	if (!disk)
 		return RES_PARERR;
 
+	sector *= disk->sector_mapping;
+	number_of_sectors *= disk->sector_mapping;
+
 	unsigned long number_of_bytes = disk->sector_size * number_of_sectors;
 
 	if (number_of_bytes > disk->size)
@@ -53,6 +56,9 @@ enum DRESULT disk_write(struct disk *disk, uint8_t *buff, uint sector,
 {
 	if (!disk)
 		return RES_PARERR;
+
+	sector *= disk->sector_mapping;
+	number_of_sectors *= disk->sector_mapping;
 
 	int number_of_bytes = (int) disk->sector_size * (int) number_of_sectors;
 

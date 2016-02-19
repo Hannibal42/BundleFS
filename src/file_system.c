@@ -6,7 +6,7 @@ bool resize_inode_block(struct FILE_SYSTEM *fs);
 void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 
-enum FSRESULT fs_mkfs(struct disk *disk)
+enum FSRESULT fs_mkfs(struct disk *disk, uint sector_size)
 {
 	uint i;
 	struct FILE_SYSTEM *fs;
@@ -16,6 +16,9 @@ enum FSRESULT fs_mkfs(struct disk *disk)
 	/*Gets the sector size*/
 	if (disk_ioctl(disk, GET_SECTOR_SIZE, &sec_size) != RES_OK)
 		return FS_ERROR;
+
+	disk->sector_mapping = sector_size / sec_size;
+	sec_size = sector_size;
 
 	/*Get number of sectors*/
 	if (disk_ioctl(disk, GET_SECTOR_COUNT, &sec_cnt) != RES_OK)

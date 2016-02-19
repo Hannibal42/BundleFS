@@ -1,6 +1,8 @@
 #include "utility_test.h"
 #include "buffer.h"
 
+#include "file_system.h"
+
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
 uint8_t *data1, *data2, *data3;
 uint8_t *buffer, *at_buffer;
@@ -54,10 +56,10 @@ TEST_SETUP(utility_tests)
 
 	disk_initialize(disk1);
 
-	for (i = 0; i < 16 * 4096; ++i)
+	for (i = 0; i < 65536; ++i)
 		buffer[i] = 0xFF;
+	disk_write(disk1, buffer, 0, 15);
 
-	disk_write(disk1, buffer, 0 ,15);
 	disk_shutdown(disk1);
 	disk_initialize(disk1);
 
@@ -430,8 +432,6 @@ TEST(utility_tests, get_ino_pos_test)
 
 TEST(utility_tests, delete_seq_global_test)
 {
-	int i;
-
 	TEST_ASSERT_TRUE(delete_seq_global(fs.at_win, 40, 10));
 
 	disk_read(disk1, buffer, 0, 16);

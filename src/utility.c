@@ -321,7 +321,7 @@ bool delete_seq_global(struct AT_WINDOW *win, uint index, uint length)
 		length -= buffer_size_bit;
 	}
 
-	/* delete end sequenz */
+	/* delete end sequence */
 	if (length > 0) {
 		if (!move_window(win, global_index))
 			return false;

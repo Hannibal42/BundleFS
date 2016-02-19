@@ -19,6 +19,7 @@ struct disk {
 	FILE *file;
 	uint sector_size;
 	uint sector_count;
+	uint sector_mapping;
 	enum DISK_STATUS status;
 };
 

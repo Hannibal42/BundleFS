@@ -18,6 +18,7 @@ TEST_SETUP(buffer_tests)
 	window = malloc(sizeof(struct AT_WINDOW));
 
 	disk_fill(disk, "disks/disk1.disk", DISK_SIZE, DISK_SEC_SIZE);
+	disk->sector_mapping = 1;
 
 	disk_create(disk, DISK_SIZE);
 	disk_initialize(disk);
@@ -41,6 +42,39 @@ TEST_TEAR_DOWN(buffer_tests)
 	free(disk);
 }
 
+/*
+ * Tests if the window functions still work, if the
+ * block size of the disk is different from the block size
+ * of the file system.
+*/
+TEST(buffer_tests, different_block_sizes)
+{
+	struct disk *disk2;
+	int i;
+
+	disk2 = malloc(sizeof(struct disk));
+	disk_fill(disk2, "disks/disk2.disk", 512 * 1000, 512);
+	disk_create(disk2, 512 * 1000);
+	disk_initialize(disk2);
+	disk2->sector_mapping = 8;
+
+	fs->sector_count = 10;
+	fs->disk = disk2;
+
+	init_window(window, fs, buffer);
+	for (i = 0; i < DISK_SEC_SIZE; ++i) {
+		buffer[i] = 0xFF;
+	}
+
+	TEST_ASSERT_TRUE(move_window(window, 1));
+	TEST_ASSERT_TRUE(move_window(window, 0));
+
+	TEST_ASSERT_EQUAL_HEX(0xFF, buffer[514]);
+
+
+	free(disk2);
+}
+
 TEST(buffer_tests, init_window_test)
 {
 	TEST_ASSERT_TRUE(init_window(window, fs, buffer));
@@ -59,14 +93,22 @@ TEST(buffer_tests, init_window_test)
 TEST(buffer_tests, move_window_test)
 {
 	init_window(window, fs, buffer);
-	TEST_ASSERT_FALSE(move_window(window , 100));
+	TEST_ASSERT_FALSE(move_window(window, 100));
 	window->buffer[0] = 0XFF;
 	window->buffer[1] = 0XFF;
 	TEST_ASSERT_TRUE(move_window(window, 1));
+	window->buffer[0] = 0x0F;
+	window->buffer[1] = 0x1F;
 	TEST_ASSERT_EQUAL(2, window->global_index);
 	TEST_ASSERT_TRUE(move_window(window, 0));
 	TEST_ASSERT_EQUAL(0xFF, window->buffer[0]);
 	TEST_ASSERT_EQUAL(0xFF, window->buffer[1]);
+
+	TEST_ASSERT_TRUE(move_window(window, 1));
+	TEST_ASSERT_EQUAL(0x0F, window->buffer[0]);
+	TEST_ASSERT_EQUAL(0x1F, window->buffer[1]);
+
+	TEST_ASSERT_FALSE(move_window(window, -1));
 }
 
 TEST(buffer_tests, save_window_test)
@@ -88,4 +130,5 @@ TEST_GROUP_RUNNER(buffer_tests)
 	RUN_TEST_CASE(buffer_tests, init_window_test);
 	RUN_TEST_CASE(buffer_tests, move_window_test);
 	RUN_TEST_CASE(buffer_tests, save_window_test);
+	RUN_TEST_CASE(buffer_tests, different_block_sizes);
 }

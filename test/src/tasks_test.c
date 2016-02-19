@@ -21,7 +21,7 @@ TEST_SETUP(tasks_tests)
 	disk_fill(disk1, "disks/disk1.disk", 4096, 64);
 	disk_create(disk1, 4096);
 	disk_initialize(disk1);
-	fs_mkfs(disk1);
+	fs_mkfs(disk1, 64);
 	disk_shutdown(disk1);
 	disk_initialize(disk1);
 

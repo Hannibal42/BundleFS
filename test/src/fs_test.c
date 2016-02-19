@@ -47,10 +47,10 @@ TEST_SETUP(fs_tests)
 	disk_initialize(disk4);
 
 	/*Make disk structures*/
-	fs_mkfs(disk1);
-	fs_mkfs(disk2);
-	fs_mkfs(disk3);
-	fs_mkfs(disk4);
+	fs_mkfs(disk1, 64);
+	fs_mkfs(disk2, 128);
+	fs_mkfs(disk3, 256);
+	fs_mkfs(disk4, 512);
 
 	/*Force the disk to write*/
 	disk_shutdown(disk1);
@@ -501,7 +501,7 @@ TEST(fs_tests, fs_mkfs_test)
 		buffer = malloc(disks[k]->sector_size);
 		fs = malloc(sizeof(struct FILE_SYSTEM));
 		disk_initialize(disks[k]);
-		TEST_ASSERT_EQUAL(FS_OK, fs_mkfs(disks[k]));
+		TEST_ASSERT_EQUAL(FS_OK, fs_mkfs(disks[k], disks[k]->sector_size));
 		at_size = div_up(disks[k]->sector_count,
 			disks[k]->sector_size);
 		ino_max = disks[k]->sector_count / 8;
