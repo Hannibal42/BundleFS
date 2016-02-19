@@ -74,7 +74,7 @@ enum FSRESULT fs_mkfs(struct disk *disk, uint sector_size)
 	fs->at_win = window;
 
 	size = sec_cnt - (fs->inode_block + fs->inode_block_size);
-	if (delete_seq_global(fs->at_win, 0, size))
+	if (!delete_seq_global(fs->at_win, 0, size))
 		return FS_DISK_ERROR;
 
 	/*Write superblock*/
