@@ -50,6 +50,7 @@ TEST_SETUP(utility_tests)
 	/*Struct setup*/
 	disk_fill(disk1, "disks/disk1.disk", 65536, 512);
 	disk_create(disk1, 65536);
+	disk1->sector_mapping = 8;
 
 	buffer = malloc(65536);
 	at_buffer = malloc(4096);
@@ -67,7 +68,7 @@ TEST_SETUP(utility_tests)
 	fs.sector_count = 16;
 	fs.disk = disk1;
 	fs.alloc_table = 0;
-	fs.alloc_table_size = 5;
+	fs.alloc_table_size = 10;
 	fs.alloc_table_buffer_size = 4096;
 	struct AT_WINDOW *window = malloc(sizeof(struct AT_WINDOW));
 	init_window(window, &fs, at_buffer);
@@ -279,6 +280,10 @@ TEST(utility_tests, delete_seq_test)
 	delete_seq(table1, 0, 512);
 	for (i = 0; i < 64; ++i)
 		TEST_ASSERT_EQUAL_HEX8(table1[i], 0x00);
+	/* Checks if the delete makes bit toggle, or sets them to 0 */
+	delete_seq(table1, 0, 512);
+	for (i = 0; i < 64; ++i)
+		TEST_ASSERT_EQUAL_HEX8(table1[i], 0x00);
 }
 
 TEST(utility_tests, write_bit_test)
@@ -432,6 +437,8 @@ TEST(utility_tests, get_ino_pos_test)
 
 TEST(utility_tests, delete_seq_global_test)
 {
+	int i;
+
 	TEST_ASSERT_TRUE(delete_seq_global(fs.at_win, 40, 10));
 
 	disk_read(disk1, buffer, 0, 16);
@@ -447,7 +454,31 @@ TEST(utility_tests, delete_seq_global_test)
 	TEST_ASSERT_EQUAL_HEX8(0x00, buffer[5000]);
 	TEST_ASSERT_EQUAL_HEX8(0x3F, buffer[5001]);
 	
+	/* Delete more than one sector */
+	TEST_ASSERT_TRUE(delete_seq_global(fs.at_win, 5, 4900 * 8));
 
+	disk_read(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_EQUAL_HEX8(0xF8, buffer[0]);
+	for (i = 1; i < 4900; ++i)
+		TEST_ASSERT_EQUAL_HEX8(0x00, buffer[i]);
+	TEST_ASSERT_EQUAL_HEX8(0x07, buffer[4900]);
+
+	/* Delete a lot sectors */
+	TEST_ASSERT_TRUE(delete_seq_global(fs.at_win, 5050 * 8 + 3, 4096 * 8 * 5));
+
+	disk_read(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_EQUAL_HEX8(0xE0, buffer[5050]);
+	for (i = 5051; i < 4096 * 5 + 5050; ++i){
+		TEST_ASSERT_EQUAL_HEX8(0x00, buffer[i]);
+	}
+
+	/* Delete first byte */
+	TEST_ASSERT_TRUE(delete_seq_global(fs.at_win, 0, 8));
+	disk_read(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_EQUAL_HEX8(0x00, buffer[0]);
 }
 
 TEST_GROUP_RUNNER(utility_tests)

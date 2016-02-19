@@ -4,15 +4,15 @@
 int main(void)
 {
 	printf("%lu\n", sizeof(struct INODE));
-	printf("\n-------------------buffer_tests--------------------\n");
+	printf("\n-------------------buffer_tests-------------------\n");
 	RUN_TEST_GROUP(buffer_tests);
 	printf("\n-------------------utility_tests------------------\n");
 	RUN_TEST_GROUP(utility_tests);
-	printf("\n---------------------fs_tests---------------------\n");
+	printf("\n-------------------fs_tests-----------------------\n");
 	RUN_TEST_GROUP(fs_tests);
-	printf("\n---------------------tasks_tests---------------------\n");
+	printf("\n-------------------tasks_tests--------------------\n");
 	RUN_TEST_GROUP(tasks_tests);
-	printf("\n--------------------system_tests-------------------\n");
+	printf("\n-------------------system_tests-------------------\n");
 	RUN_TEST_GROUP(system_tests);
 	printf("\n");
 	return 0;
