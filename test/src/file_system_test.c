@@ -1,8 +1,6 @@
-#include "fs_test.h"
+#include "../include/file_system_test.h"
 
-#include "print_stuff.h"
-
-struct disk *disk1, *disk2, *disk3, *disk4;
+struct DISK *disk1, *disk2, *disk3, *disk4;
 struct FILE_SYSTEM fs1, fs2, fs3;
 struct INODE in1, in2, in3, in4;
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
@@ -24,10 +22,10 @@ TEST_SETUP(fs_tests)
 {
 	uint i;
 
-	disk1 = malloc(sizeof(struct disk));
-	disk2 = malloc(sizeof(struct disk));
-	disk3 = malloc(sizeof(struct disk));
-	disk4 = malloc(sizeof(struct disk));
+	disk1 = malloc(sizeof(struct DISK));
+	disk2 = malloc(sizeof(struct DISK));
+	disk3 = malloc(sizeof(struct DISK));
+	disk4 = malloc(sizeof(struct DISK));
 	/*Struct setup*/
 	disk_fill(disk1, "disks/disk1.disk", 4096, 64);
 	disk_fill(disk2, "disks/disk2.disk", 2048, 128);
@@ -402,7 +400,7 @@ TEST(fs_tests, fs_getfree_test)
 {
 	uint i, tmp;
 	struct FILE_SYSTEM fs[3] = {fs1, fs2, fs3};
-	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
+	struct DISK *disks[4] = {disk1, disk2, disk3, disk4};
 
 	for (i = 0; i < 3; ++i) {
 		fs_mount(disks[i], &fs[i]);
@@ -457,7 +455,7 @@ TEST(fs_tests, fs_open_test)
 TEST(fs_tests, fs_mount_test)
 {
 	uint i, tmp;
-	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
+	struct DISK *disks[4] = {disk1, disk2, disk3, disk4};
 
 	for (i = 0; i < 4; ++i) {
 		disk_initialize(disks[i]);
@@ -494,7 +492,7 @@ TEST(fs_tests, fs_mkfs_test)
 	uint k, at_size, it_size, ino_max, ib_size, tmp;
 	uint8_t *buffer;
 	struct FILE_SYSTEM *fs;
-	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
+	struct DISK *disks[4] = {disk1, disk2, disk3, disk4};
 
 	for (k = 0; k < 4; ++k) {
 
@@ -572,7 +570,7 @@ TEST(fs_tests, write_inode_test)
 TEST(fs_tests, inodes_used_test)
 {
 	uint i, k, tmp;
-	struct disk *disks[4] = {disk1, disk2, disk3, disk4};
+	struct DISK *disks[4] = {disk1, disk2, disk3, disk4};
 	struct INODE inodes[3] = {in1, in2, in3};
 
 	for (k = 0; k < 4; ++k) {

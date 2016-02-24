@@ -28,19 +28,19 @@ enum DRESULT {
 
 
 /*Returns the status of the disk*/
-enum DISK_STATUS disk_status(const struct disk *disk);
+enum DISK_STATUS disk_status(const struct DISK *disk);
 /*Opens the filehandler for the disk*/
-enum DRESULT disk_initialize(struct disk *disk);
+enum DRESULT disk_initialize(struct DISK *disk);
 /*Closes the filehandler*/
-enum DRESULT disk_shutdown(struct disk *disk);
+enum DRESULT disk_shutdown(struct DISK *disk);
 /*Reads from sector and stores the result in buff*/
-enum DRESULT disk_read(struct disk *disk, uint8_t *buff, uint sector,
+enum DRESULT disk_read(struct DISK *disk, uint8_t *buff, uint sector,
 	uint number_of_sectors);
 /*Writes buff starting from sector*/
-enum DRESULT disk_write(struct disk *disk, uint8_t *buff, uint sector,
+enum DRESULT disk_write(struct DISK *disk, uint8_t *buff, uint sector,
 	uint number_of_sectors);
 /*Returns information about the disk, see the defines for cmd*/
-enum DRESULT disk_ioctl(struct disk *disk, char cmd, unsigned long *buff);
+enum DRESULT disk_ioctl(struct DISK *disk, char cmd, unsigned long *buff);
 /*Returns the system time*/
 time_t system_get_time(void);
 

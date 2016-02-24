@@ -1,11 +1,12 @@
 #include "main.h"
-#include "buffer.h"
+
+#include "../include/window_buffer.h"
 
 int main(void)
 {
 	int i;
 	struct FILE_SYSTEM fs;
-	struct disk disk;
+	struct DISK disk;
 	struct INODE fil;
 
 	disk_fill(&disk, "disks/disk4.disk", 104857600, 4096);

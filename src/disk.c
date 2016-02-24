@@ -1,6 +1,6 @@
 #include "disk.h"
 
-void disk_fill(struct disk *disk, char *filename, uint size, uint sector_size)
+void disk_fill(struct DISK *disk, char *filename, uint size, uint sector_size)
 {
 	disk->size = size;
 	disk->sector_size = sector_size;
@@ -10,7 +10,7 @@ void disk_fill(struct disk *disk, char *filename, uint size, uint sector_size)
 	disk->status = STA_NOINIT;
 }
 
-void disk_create(struct disk *disk, uint size)
+void disk_create(struct DISK *disk, uint size)
 {
 
 	if (!disk)

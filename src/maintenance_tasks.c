@@ -1,6 +1,6 @@
-#include "tasks.h"
+#include "../include/maintenance_tasks.h"
 
-#include "buffer.h"
+#include "../include/window_buffer.h"
 
 /* Defragments the files on disk */
 void defragment(struct FILE_SYSTEM *fs)

@@ -1,5 +1,6 @@
 #include "main.h"
-#include "metadata.h"
+
+#include "../../include/file_system_structs.h"
 
 int main(void)
 {

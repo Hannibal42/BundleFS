@@ -1,9 +1,9 @@
-#include "tasks_test.h"
+#include "../include/maintenance_tasks_test.h"
 
 #include <unistd.h>
 #include <sys/time.h>
 
-struct disk *disk1;
+struct DISK *disk1;
 struct FILE_SYSTEM fs1;
 struct INODE in1, in2, in3, in4;
 uint8_t *data1, *data2;
@@ -17,7 +17,7 @@ TEST_SETUP(tasks_tests)
 {
 	uint i;
 
-	disk1 = malloc(sizeof(struct disk));
+	disk1 = malloc(sizeof(struct DISK));
 	disk_fill(disk1, "disks/disk1.disk", 4096, 64);
 	disk_create(disk1, 4096);
 	disk_initialize(disk1);

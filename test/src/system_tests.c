@@ -1,6 +1,6 @@
 #include "system_tests.h"
 
-struct disk disks[8];
+struct DISK disks[8];
 uint8_t *data[5];
 
 TEST_GROUP(system_tests);

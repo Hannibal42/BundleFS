@@ -3,9 +3,9 @@
 
 #include <unity.h>
 #include <unity_fixture.h>
+#include "../../include/maintenance_tasks.h"
 
-#include "tasks.h"
-#include "metadata.h"
+#include "../../include/file_system_structs.h"
 
 void run_tasks_tests(void);
 

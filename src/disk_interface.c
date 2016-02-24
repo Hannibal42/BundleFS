@@ -1,12 +1,12 @@
 #include "disk_interface.h"
 
 
-enum DISK_STATUS disk_status(const struct disk *disk)
+enum DISK_STATUS disk_status(const struct DISK *disk)
 {
 	return disk->status;
 }
 
-enum DRESULT disk_initialize(struct disk *disk)
+enum DRESULT disk_initialize(struct DISK *disk)
 {
 	if (!disk)
 		return RES_PARERR;
@@ -21,7 +21,7 @@ enum DRESULT disk_initialize(struct disk *disk)
 	return RES_ERROR;
 }
 
-enum DRESULT disk_shutdown(struct disk *disk)
+enum DRESULT disk_shutdown(struct DISK *disk)
 {
 	if (!disk || disk->status != STA_READY)
 		return RES_PARERR;
@@ -31,7 +31,7 @@ enum DRESULT disk_shutdown(struct disk *disk)
 	return RES_OK;
 }
 
-enum DRESULT disk_read(struct disk *disk, uint8_t *buff, uint sector,
+enum DRESULT disk_read(struct DISK *disk, uint8_t *buff, uint sector,
 	uint number_of_sectors)
 {
 	if (!disk)
@@ -51,7 +51,7 @@ enum DRESULT disk_read(struct disk *disk, uint8_t *buff, uint sector,
 	return RES_OK;
 }
 
-enum DRESULT disk_write(struct disk *disk, uint8_t *buff, uint sector,
+enum DRESULT disk_write(struct DISK *disk, uint8_t *buff, uint sector,
 	uint number_of_sectors)
 {
 	if (!disk)
@@ -78,7 +78,7 @@ time_t system_getTime(void)
 	return time(NULL);
 }
 
-enum DRESULT disk_ioctl(struct disk *disk, char cmd, unsigned long *buff)
+enum DRESULT disk_ioctl(struct DISK *disk, char cmd, unsigned long *buff)
 {
 	switch (cmd) {
 	case CTRL_SYNC:

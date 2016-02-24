@@ -1,4 +1,4 @@
-#include "board_specifics.h"
+#include "../include/hardware_specifics.h"
 
 uint64_t get_time(void)
 {
@@ -28,7 +28,6 @@ uint32_t calc_crc32_8(uint8_t *input, unsigned int lenght)
 }
 
 
-/* TODO: Change this function for upcn*/
 uint32_t check_size(void)
 {
 	return sizeof(uint32_t);

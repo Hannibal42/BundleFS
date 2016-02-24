@@ -12,7 +12,7 @@ enum DISK_STATUS {
 	STA_ERROR_NO_FILE,
 };
 
-struct disk {
+struct DISK {
 	char number;
 	unsigned long size;/*size of the device in byte*/
 	char *file_name;
@@ -24,8 +24,8 @@ struct disk {
 };
 
 /*Fills the struct with the right parameters*/
-void disk_fill(struct disk *disk, char *filename, uint size, uint sector_size);
+void disk_fill(struct DISK *disk, char *filename, uint size, uint sector_size);
 /*Creates the file for the disk*/
-void disk_create(struct disk *disk, uint size);
+void disk_create(struct DISK *disk, uint size);
 
 #endif /* DISK_H */

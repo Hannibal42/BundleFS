@@ -1,8 +1,8 @@
-#include "buffer_test.h"
+#include "../include/window_buffer_test.h"
 
 struct AT_WINDOW *window;
 struct FILE_SYSTEM *fs;
-struct disk *disk;
+struct DISK *disk;
 uint8_t *buffer;
 
 #define DISK_SEC_SIZE 4096
@@ -14,7 +14,7 @@ TEST_SETUP(buffer_tests)
 {
 	buffer = malloc(DISK_SEC_SIZE);
 	fs = malloc(sizeof(struct FILE_SYSTEM));
-	disk = malloc(sizeof(struct disk));
+	disk = malloc(sizeof(struct DISK));
 	window = malloc(sizeof(struct AT_WINDOW));
 
 	disk_fill(disk, "disks/disk1.disk", DISK_SIZE, DISK_SEC_SIZE);
@@ -49,10 +49,10 @@ TEST_TEAR_DOWN(buffer_tests)
 */
 TEST(buffer_tests, different_block_sizes)
 {
-	struct disk *disk2;
+	struct DISK *disk2;
 	int i;
 
-	disk2 = malloc(sizeof(struct disk));
+	disk2 = malloc(sizeof(struct DISK));
 	disk_fill(disk2, "disks/disk2.disk", 512 * 1000, 512);
 	disk_create(disk2, 512 * 1000);
 	disk_initialize(disk2);
@@ -101,6 +101,7 @@ TEST(buffer_tests, move_window_test)
 	window->buffer[1] = 0x1F;
 	TEST_ASSERT_EQUAL(2, window->global_index);
 	TEST_ASSERT_TRUE(move_window(window, 0));
+	TEST_ASSERT_EQUAL(1, window->global_index);
 	TEST_ASSERT_EQUAL(0xFF, window->buffer[0]);
 	TEST_ASSERT_EQUAL(0xFF, window->buffer[1]);
 

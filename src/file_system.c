@@ -1,12 +1,13 @@
 #include "file_system.h"
-#include "buffer.h"
+
+#include "../include/window_buffer.h"
 
 bool free_disk_space(struct FILE_SYSTEM *fs, uint size);
 bool resize_inode_block(struct FILE_SYSTEM *fs);
 void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 
-enum FSRESULT fs_mkfs(struct disk *disk, uint sector_size)
+enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 {
 	uint i;
 	struct FILE_SYSTEM *fs;
@@ -232,7 +233,7 @@ enum FSRESULT fs_close(struct FILE_SYSTEM *fs, struct INODE *file)
 	return FS_OK;
 }
 
-enum FSRESULT fs_mount(struct disk *disk, struct FILE_SYSTEM *fs)
+enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs)
 {
 
 	unsigned long sector_size;

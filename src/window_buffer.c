@@ -1,4 +1,4 @@
-#include "buffer.h"
+#include "../include/window_buffer.h"
 
 
 bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
@@ -25,9 +25,14 @@ bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
 
 bool move_window(struct AT_WINDOW *win, int index)
 {
+	uint new_index = win->global_start + index;
 	/* Parameter checking */
-	if (index + win->sectors > win->global_end || index < 0)
+	if (new_index > win->global_end || index < 0)
 		return false;
+
+	/* Check if the window is already at the right position */
+	if (win->global_index == new_index)
+		return true;
 
 	/* Save and new load */
 	if (disk_write(win->disk, win->buffer, win->global_index, win->sectors) != RES_OK)

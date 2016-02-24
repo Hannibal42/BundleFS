@@ -1,12 +1,12 @@
 #include "utility_test.h"
-#include "buffer.h"
 
+#include "../../include/window_buffer.h"
 #include "file_system.h"
 
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
 uint8_t *data1, *data2, *data3;
 uint8_t *buffer, *at_buffer;
-struct disk *disk1;
+struct DISK *disk1;
 struct FILE_SYSTEM fs;
 
 extern int find_seq_byte(uint8_t byte, uint length);
@@ -46,7 +46,7 @@ TEST_SETUP(utility_tests)
 		data3[i] = 0xEE;
 
 	/* For global function testing */
-	disk1 = malloc(sizeof(struct disk));
+	disk1 = malloc(sizeof(struct DISK));
 	/*Struct setup*/
 	disk_fill(disk1, "disks/disk1.disk", 65536, 512);
 	disk_create(disk1, 65536);
