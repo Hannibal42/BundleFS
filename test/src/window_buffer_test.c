@@ -18,7 +18,7 @@ TEST_SETUP(buffer_tests)
 	window = malloc(sizeof(struct AT_WINDOW));
 
 	disk_fill(disk, "disks/disk1.disk", DISK_SIZE, DISK_SEC_SIZE);
-	disk->sector_mapping = 1;
+	disk->sector_block_mapping = 1;
 
 	disk_create(disk, DISK_SIZE);
 	disk_initialize(disk);
@@ -56,7 +56,7 @@ TEST(buffer_tests, different_block_sizes)
 	disk_fill(disk2, "disks/disk2.disk", 512 * 1000, 512);
 	disk_create(disk2, 512 * 1000);
 	disk_initialize(disk2);
-	disk2->sector_mapping = 8;
+	disk2->sector_block_mapping = 8;
 
 	fs->sector_count = 10;
 	fs->disk = disk2;

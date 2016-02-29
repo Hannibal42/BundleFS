@@ -37,15 +37,15 @@ enum DRESULT disk_read(struct DISK *disk, uint8_t *buff, uint sector,
 	if (!disk)
 		return RES_PARERR;
 
-	sector *= disk->sector_mapping;
-	number_of_sectors *= disk->sector_mapping;
+	sector *= disk->sector_block_mapping;
+	number_of_sectors *= disk->sector_block_mapping;
 
-	unsigned long number_of_bytes = disk->sector_size * number_of_sectors;
+	unsigned long number_of_bytes = disk->block_size * number_of_sectors;
 
 	if (number_of_bytes > disk->size)
 		return RES_PARERR;
 
-	fseek(disk->file, sector * disk->sector_size, SEEK_SET);
+	fseek(disk->file, sector * disk->block_size, SEEK_SET);
 	fread((char *) buff, sizeof(char), number_of_bytes, disk->file);
 
 	return RES_OK;
@@ -57,15 +57,15 @@ enum DRESULT disk_write(struct DISK *disk, uint8_t *buff, uint sector,
 	if (!disk)
 		return RES_PARERR;
 
-	sector *= disk->sector_mapping;
-	number_of_sectors *= disk->sector_mapping;
+	sector *= disk->sector_block_mapping;
+	number_of_sectors *= disk->sector_block_mapping;
 
-	int number_of_bytes = (int) disk->sector_size * (int) number_of_sectors;
+	int number_of_bytes = (int) disk->block_size * (int) number_of_sectors;
 
 	if (number_of_bytes > disk->size)
 		return RES_PARERR;
 
-	fseek(disk->file, sector * disk->sector_size, SEEK_SET);
+	fseek(disk->file, sector * disk->block_size, SEEK_SET);
 	fwrite((char *) buff, sizeof(char), number_of_bytes, disk->file);
 	/* Writes the cache to disk */
 	fflush(disk->file);
@@ -85,10 +85,10 @@ enum DRESULT disk_ioctl(struct DISK *disk, char cmd, unsigned long *buff)
 		/*Flush the disk here*/
 		return RES_ERROR;
 	case GET_SECTOR_COUNT:
-		(*buff) = disk->sector_count;
+		(*buff) = disk->block_count;
 		return RES_OK;
 	case GET_SECTOR_SIZE:
-		(*buff) = disk->sector_size;
+		(*buff) = disk->block_size;
 		return RES_OK;
 	case CTRL_ERASE_SECTOR:
 		/* Erase a sector */

@@ -30,7 +30,7 @@ TEST_SETUP(system_tests)
 
 	for (i = 0; i < 8; ++i) {
 		disk_initialize(&disks[i]);
-		fs_mkfs(&disks[i], disks[i].sector_size);
+		fs_mkfs(&disks[i], disks[i].block_size);
 		disk_shutdown(&disks[i]);
 		disk_initialize(&disks[i]);
 	}

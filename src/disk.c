@@ -3,8 +3,8 @@
 void disk_fill(struct DISK *disk, char *filename, uint size, uint sector_size)
 {
 	disk->size = size;
-	disk->sector_size = sector_size;
-	disk->sector_count = disk->size / disk->sector_size;
+	disk->block_size = sector_size;
+	disk->block_count = disk->size / disk->block_size;
 	disk->file_name = filename;
 	disk->file = NULL;
 	disk->status = STA_NOINIT;

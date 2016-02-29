@@ -18,7 +18,7 @@ enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 	if (disk_ioctl(disk, GET_SECTOR_SIZE, &sec_size) != RES_OK)
 		return FS_ERROR;
 
-	disk->sector_mapping = sector_size / sec_size;
+	disk->sector_block_mapping = sector_size / sec_size;
 	sec_size = sector_size;
 
 	/*Get number of sectors*/

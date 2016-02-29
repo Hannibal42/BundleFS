@@ -461,9 +461,9 @@ TEST(fs_tests, fs_mount_test)
 		disk_initialize(disks[i]);
 		TEST_ASSERT_EQUAL(FS_OK, fs_mount(disks[i], &fs1));
 
-		TEST_ASSERT_EQUAL_UINT(fs1.sector_size, disks[i]->sector_size);
+		TEST_ASSERT_EQUAL_UINT(fs1.sector_size, disks[i]->block_size);
 		TEST_ASSERT_EQUAL_UINT(fs1.sector_count,
-			disks[i]->sector_count);
+			disks[i]->block_count);
 		tmp = div_up(sizeof(struct FILE_SYSTEM), fs1.sector_size);
 		TEST_ASSERT_EQUAL_UINT(fs1.alloc_table, tmp);
 		tmp = div_up(fs1.sector_count, fs1.sector_size * 8);
@@ -496,23 +496,23 @@ TEST(fs_tests, fs_mkfs_test)
 
 	for (k = 0; k < 4; ++k) {
 
-		buffer = malloc(disks[k]->sector_size);
+		buffer = malloc(disks[k]->block_size);
 		fs = malloc(sizeof(struct FILE_SYSTEM));
 		disk_initialize(disks[k]);
-		TEST_ASSERT_EQUAL(FS_OK, fs_mkfs(disks[k], disks[k]->sector_size));
-		at_size = div_up(disks[k]->sector_count,
-			disks[k]->sector_size);
-		ino_max = disks[k]->sector_count / 8;
+		TEST_ASSERT_EQUAL(FS_OK, fs_mkfs(disks[k], disks[k]->block_size));
+		at_size = div_up(disks[k]->block_count,
+			disks[k]->block_size);
+		ino_max = disks[k]->block_count / 8;
 		if (ino_max < 8)
 			ino_max = 8;
-		it_size = div_up(ino_max, disks[k]->sector_size);
+		it_size = div_up(ino_max, disks[k]->block_size);
 
 		disk_read(disks[k], buffer, 0, 1);
 
 		memcpy(fs, buffer, sizeof(struct FILE_SYSTEM));
-		TEST_ASSERT_EQUAL_UINT(fs->sector_size, disks[k]->sector_size);
+		TEST_ASSERT_EQUAL_UINT(fs->sector_size, disks[k]->block_size);
 		TEST_ASSERT_EQUAL_UINT(fs->sector_count,
-			disks[k]->sector_count);
+			disks[k]->block_count);
 		TEST_ASSERT_EQUAL_UINT(fs->alloc_table, 1);
 		TEST_ASSERT_EQUAL_UINT(fs->alloc_table_size, at_size);
 		TEST_ASSERT_EQUAL_UINT(fs->inode_alloc_table, (at_size + 1));
@@ -528,7 +528,7 @@ TEST(fs_tests, fs_mkfs_test)
 		ib_size = fs->inode_block_size;
 
 		disk_read(disks[k], buffer, 1, at_size);
-		tmp = disks[k]->sector_count;
+		tmp = disks[k]->block_count;
 		tmp -= (1 + at_size + it_size + ib_size);
 		tmp /= 8;
 		for (i = 0; i < tmp; ++i)

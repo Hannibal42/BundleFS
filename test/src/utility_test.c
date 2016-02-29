@@ -50,7 +50,7 @@ TEST_SETUP(utility_tests)
 	/*Struct setup*/
 	disk_fill(disk1, "disks/disk1.disk", 65536, 512);
 	disk_create(disk1, 65536);
-	disk1->sector_mapping = 8;
+	disk1->sector_block_mapping = 8;
 
 	buffer = malloc(65536);
 	at_buffer = malloc(4096);
