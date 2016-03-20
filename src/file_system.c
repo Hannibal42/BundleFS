@@ -4,8 +4,6 @@
 
 bool free_disk_space(struct FILE_SYSTEM *fs, uint size);
 bool resize_inode_block(struct FILE_SYSTEM *fs);
-void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
-void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs);
 
 enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 {
@@ -78,6 +76,9 @@ enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 	if (!delete_seq_global(fs->at_win, 0, size))
 		return FS_DISK_ERROR;
 
+	if (!save_window(fs->at_win))
+		return FS_DISK_ERROR;
+
 	/*Write superblock*/
 	memcpy(SEC_BUFFER, fs, sizeof(struct FILE_SYSTEM));
 	if (disk_write(disk, SEC_BUFFER, 0, 1) != RES_OK)
@@ -128,10 +129,8 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	tmp = fs->sector_count - (file->location + bit_length);
 
 	/* Free bits in the allocation table */
-	if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size) != RES_OK)
+	if (!delete_seq_global(fs->at_win, tmp, bit_length))
 		return FS_DISK_ERROR;
-	delete_seq(AT_BUFFER, tmp, bit_length);
 
 	/*Free bit in inode_table*/
 	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
@@ -142,8 +141,7 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
 		fs->inode_alloc_table_size) != RES_OK)
 		return FS_DISK_ERROR;
-	if (disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size) != RES_OK)
+	if (!save_window(fs->at_win))
 		return FS_DISK_ERROR;
 
 	return FS_OK;
@@ -259,7 +257,9 @@ unsigned long fs_getfree(struct FILE_SYSTEM *fs)
 
 	byte_cnt = div_up(fs->sector_count, 8);
 
-	load_all_tab(AT_BUFFER, fs);
+	if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size) != RES_OK)
+		return 0;
 
 	tmp = 0;
 	for (i = 0; i < byte_cnt; ++i)
@@ -277,8 +277,12 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	sec_size = fs->sector_size - check_size();
 	bit_cnt = div_up(size, sec_size);
 
-	load_all_tab(AT_BUFFER, fs);
-	load_ino_tab(IT_BUFFER, fs);
+	if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
+		fs->alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
+	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+		fs->inode_alloc_table_size) != RES_OK)
+		return FS_DISK_ERROR;
 
 	/*Finds and writes a free inode in the inode alloc table*/
 	byt_ino_tab = fs->inode_alloc_table_size * fs->sector_size;
@@ -320,7 +324,8 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	}
 
 	/* Write the buffer */
-	write_seq(AT_BUFFER, all_off, bit_cnt);
+	if (!write_seq_global(fs->at_win, all_off, bit_cnt))
+		return FS_DISK_ERROR;
 	write_bit(IT_BUFFER, ino_off, true);
 
 	file->size = size;
@@ -330,8 +335,7 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	file->inode_offset = ino_off;
 
 	/* Write all to disk */
-	if (disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size) != RES_OK)
+	if (!save_window(fs->at_win))
 		return FS_DISK_ERROR;
 	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
 		fs->inode_alloc_table_size) != RES_OK)
@@ -339,30 +343,6 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	write_inode(fs, file);
 
 	return FS_OK;
-}
-
-/* TODO: Remove */
-void load_all_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
-{
-	uint32_t i;
-
-	for (i = 0; i < fs->alloc_table_size; ++i) {
-		disk_read(fs->disk, SEC_BUFFER,
-			fs->alloc_table + i, 1);
-		memcpy(buffer, SEC_BUFFER, fs->sector_size);
-	}
-}
-
-/* TODO: Remove */
-void load_ino_tab(uint8_t *buffer, struct FILE_SYSTEM *fs)
-{
-	uint32_t i;
-
-	for (i = 0; i < fs->inode_alloc_table_size; ++i) {
-		disk_read(fs->disk, SEC_BUFFER,
-			fs->inode_alloc_table + i, 1);
-		memcpy(buffer, SEC_BUFFER, fs->sector_size);
-	}
 }
 
 bool free_disk_space(struct FILE_SYSTEM *fs, uint size)
@@ -379,7 +359,7 @@ bool free_disk_space(struct FILE_SYSTEM *fs, uint size)
 
 	fs_delete(fs, inode);
 
-	/* TODO: Notify upcn that a Budnle was deleted */
+	/* TODO: Notify upcn that a bundle was deleted */
 
 	free(inode);
 	return true;
@@ -400,14 +380,14 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 	tmp = fs->sector_count - (fs->inode_block + fs->inode_block_size);
 	tmp -= 1;
 
-	if (!check_seq(AT_BUFFER, tmp, 1))
+	if (!check_seq_global(fs->at_win, tmp, 1))
 		return false;
 
-	write_seq(AT_BUFFER, tmp, 1);
+	if (!write_seq_global(fs->at_win, tmp, 1))
+		return false;
 	delete_seq(IT_BUFFER, fs->inode_max, fs->inode_sec);
 
-	if (disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size) != RES_OK)
+	if (!save_window(fs->at_win))
 		return false;
 
 	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,

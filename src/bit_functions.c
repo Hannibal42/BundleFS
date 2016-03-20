@@ -62,7 +62,7 @@ int find_seq_byte(uint8_t byte, uint length)
 	return -1;
 }
 
-/* lenght must be < 9 for this, and the table must be > 0*/
+/* Length must be < 9 for this, and the table must be > 0*/
 int find_seq_small(const uint8_t *table, uint table_size, uint length)
 {
 	uint i;
@@ -301,7 +301,6 @@ bool write_seq_global(struct AT_WINDOW *win, uint index, uint length)
 		length_start = length;
 	}
 
-	//TODO: Check if the window is already at the right position
 	if (!move_window(win, global_index))
 		return false;
 	write_seq(win->buffer, index_start, length_start);
@@ -367,6 +366,13 @@ bool check_seq_global(struct AT_WINDOW *win, uint index, uint length)
 			return false;
 	}
 	return true;
+}
+
+/* Finds the largest sequence in the allocation table that is free */
+bool find_largest_seq_global(struct AT_WINDOW *win, uint *length, uint *index)
+{
+
+	return false;
 }
 
 
