@@ -90,6 +90,35 @@ int find_seq_small(const uint8_t *table, uint table_size, uint length)
 	return -1;
 }
 
+/* Length must be < 9 for this, and the table must be > 0*/
+int find_seq_small_new(const uint8_t *table, uint table_size, uint length, uint *end_length)
+{
+	uint i;
+	int tmp;
+
+	tmp = find_seq_byte(table[0], length);
+	if (tmp >= 0)
+		return tmp;
+	tmp = last_free_bits(table[0]);
+	for (i = 1; i < table_size; ++i) {
+		/* Small optimization */
+		if (table[i] == 0xFF) {
+			tmp = 0;
+			continue;
+		}
+
+		tmp += first_free_bits(table[i]);
+		if (tmp >= length)
+			return i * 8 - last_free_bits(table[i-1]);
+		tmp = find_seq_byte(table[i], length);
+		if (tmp > 0)
+			return i * 8 + tmp;
+		tmp = last_free_bits(table[i]);
+	}
+	*end_length = tmp;
+	return -1;
+}
+
 int find_seq(const uint8_t *table, uint table_size, uint length)
 {
 	int tmp;
@@ -115,6 +144,36 @@ int find_seq(const uint8_t *table, uint table_size, uint length)
 			start = i;
 		}
 	}
+	return -1;
+}
+
+
+int find_seq_new(const uint8_t *table, uint table_size, uint length, uint *end_length)
+{
+	uint tmp;
+	uint i, start;
+
+	if (length < 9)
+		return find_seq_small_new(table, table_size, length, end_length);
+
+	tmp = 0;
+	start = 0;
+	for (i = 0; i < table_size; ++i) {
+		if (table[i] == 0x00) {
+			tmp += 8;
+			if (tmp >= length)
+				return (start * 8) +
+				(8 - last_free_bits(table[start]));
+		} else {
+			tmp += first_free_bits(table[i]);
+			if (tmp >= length)
+				return (start * 8) +
+				(8 - last_free_bits(table[start]));
+			tmp = last_free_bits(table[i]);
+			start = i;
+		}
+	}
+	*end_length = tmp;
 	return -1;
 }
 
@@ -165,6 +224,7 @@ void write_seq(uint8_t *table, uint index, uint length)
 	}
 }
 
+/* TODO: remove the malloc */
 bool check_seq(uint8_t *table, uint index, uint length)
 {
 	uint tmp, start_pad, i, start_byte, end_byte, byte_length;
@@ -375,45 +435,91 @@ bool find_largest_seq_global(struct AT_WINDOW *win, uint *length, uint *index)
 	return false;
 }
 
-
-/*
-bool find_seq_global(struct AT_WINDOW *win, uint table_size, uint length, uint *index)
+/* This functions finds a sequence that is lesser equal to the window buffer size */
+bool find_seq_global_small(struct AT_WINDOW *win, uint length, uint *index)
 {
-	uint global_index, global_end, index_start, length_start, buffer_size_bit, ret_index, bit_count;
+	uint global_index, global_end, check_length, buffer_size_byte, tmp_length;
+	int tmp_index;
 
-	buffer_size_bit = win->sectors * win->sector_size * 8;
-	global_index = index / buffer_size_bit;
-	global_end = length / buffer_size_bit;
-	global_end += global_index;
+	buffer_size_byte = win->sectors * win->sector_size;
+	if(!move_window(win, 0)) return false;
 
-	index_start = index % buffer_size_bit;
-	length_start = buffer_size_bit - index_start;
-
-	if (length < length_start) {
-		length_start = length;
+	tmp_index = find_seq_new(win->buffer,buffer_size_byte , length, &tmp_length);
+	if (tmp_index != -1) {
+		*index = tmp_index;
+		return true;
 	}
 
-	//TODO: Check if the window is already at the right position
-	if (!move_window(win, global_index))
-		return false;
+	for(global_index = 1; global_index <= win->global_end; ++global_index) {
+		if(!move_window(win, global_index)) return false;
 
+		if (check_seq(win->buffer, 0, length - tmp_length)) {
+			*index = global_index * win->sector_size * 8  - tmp_length;
+			return true;
+		}
 
-	for (++global_index; global_index < global_end; ++global_index) {
-		if (!move_window(win, global_index))
-			return false;
-		write_seq(win->buffer, 0, buffer_size_bit);
-		length -= buffer_size_bit;
+		tmp_index = find_seq_new(win->buffer,buffer_size_byte , length, &tmp_length);
+		if (tmp_index != -1) {
+			*index = tmp_index;
+			return true;
+		}
 	}
 
-	if (length > 0) {
-		if (!move_window(win, global_index))
-			return false;
-		write_seq(win->buffer, 0, length);
+	return false;
+}
+
+/*TODO: find_seq_end und find_seq_start global implementieren */
+bool find_seq_global(struct AT_WINDOW *win, uint length, uint *index)
+{
+	uint i, global_index, global_end, tmp_length, buffer_size_byte, buffer_size_bit,
+	tmp, tmp_index, tmp_global_index;
+
+	buffer_size_byte = win->sectors * win->sector_size;
+	buffer_size_bit = buffer_size_byte * 8;
+	if(!move_window(win, 0)) return false;
+	global_index = 0;
+
+	/* Find a sequence that is smaller than the buffer window */
+	if(length <= buffer_size_bit)
+		return find_seq_global_small(win, length, index);
+
+	for (global_index = 1; global_index < win->global_end; ++global_index) {
+		if (!move_window(win, global_index)) return false;
+
+		//Start
+		if (tmp_length == length) {
+			tmp_index = find_seq_new(win->buffer, buffer_size_byte, tmp_length, &tmp);
+			tmp_length -= tmp;
+			tmp_global_index = i;
+			continue;
+		}
+
+		//Middle
+		if (tmp_length > buffer_size_bit) {
+			for (i = 0; i < buffer_size_byte; ++i) {
+				if(win->buffer[i] != 0x00) {
+					tmp_length = length;
+					tmp_global_index = i;
+					tmp_index = find_seq_new(win->buffer, buffer_size_byte, tmp_length, &tmp);
+					break;
+				}
+				tmp_length -= 8;
+			}
+			continue;
+		}
+
+		//End
+		if(check_seq(win->buffer, 0, tmp_length)) {
+			*index = tmp_global_index * win->sector_size + tmp_index;
+			return true;
+		}
+		tmp_length = length;
+		tmp_index = find_seq_new(win->buffer, buffer_size_byte, tmp_length, &tmp);
+		tmp_global_index = i;
 	}
-	if (!save_window(win))
-		return false;
-	return true;
-}*/
+
+	return false;
+}
 
 unsigned long div_up(unsigned long dividend,
 	unsigned long divisor)

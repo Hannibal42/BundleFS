@@ -481,6 +481,51 @@ TEST(utility_tests, delete_seq_global_test)
 	TEST_ASSERT_EQUAL_HEX8(0x00, buffer[0]);
 }
 
+TEST(utility_tests, write_seq_global_test) {
+
+}
+
+TEST(utility_tests, find_seq_global_1_test) {
+	uint i;
+	/* Small sequence */
+	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, 40, &i));
+
+	disk_read(disk1, buffer, 0, 16);
+
+	buffer[0] = 0x00;
+	buffer[1] = 0x00;
+
+	disk_write(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 10, &i));
+	TEST_ASSERT_EQUAL_INT(0, i);
+
+	/* Sequence over 2 sectors */
+	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, 20, &i));
+
+	buffer[4095] = 0x00;
+	buffer[4096] = 0x00;
+	buffer[4097] = 0x00;
+	disk_write(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 20, &i));
+	TEST_ASSERT_EQUAL(32760, i);
+
+	/* Sequence at the end of the allocation table  */
+	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, 32, &i));
+
+	buffer[40000] = 0x00;
+	buffer[40001] = 0x00;
+	buffer[40002] = 0x00;
+	buffer[40003] = 0x00;
+	disk_write(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 32, &i));
+	TEST_ASSERT_EQUAL(327648, i);
+
+
+}
+
 TEST_GROUP_RUNNER(utility_tests)
 {
 	RUN_TEST_CASE(utility_tests, get_ino_pos_test);
@@ -498,4 +543,6 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, check_seq_test);
 	RUN_TEST_CASE(utility_tests, calc_fake_crc_test);
 	RUN_TEST_CASE(utility_tests, delete_seq_global_test);
+	RUN_TEST_CASE(utility_tests, write_seq_global_test);
+	RUN_TEST_CASE(utility_tests, find_seq_global_1_test);
 }
