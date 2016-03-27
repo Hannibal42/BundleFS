@@ -122,8 +122,23 @@ TEST(buffer_tests, save_window_test)
 
 	disk_read(disk, buffer, 1, 1);
 
-	TEST_ASSERT_EQUAL(0xFF, window->buffer[0]);
-	TEST_ASSERT_EQUAL(0xFF, window->buffer[1]);
+	TEST_ASSERT_EQUAL(0xFF, buffer[0]);
+	TEST_ASSERT_EQUAL(0xFF, buffer[1]);
+}
+
+/* To test if the last sector of the AT is accessible */
+TEST(buffer_tests, last_sector_test)
+{
+	init_window(window, fs, buffer);
+	TEST_ASSERT_TRUE(move_window(window, 4));
+	window->buffer[0] = 0xFF;
+	window->buffer[1] = 0xFF;
+
+	TEST_ASSERT_TRUE(save_window(window));
+
+	disk_read(disk, buffer, 5, 1);
+	TEST_ASSERT_EQUAL(0xFF, buffer[0]);
+	TEST_ASSERT_EQUAL(0xFF, buffer[1]);
 }
 
 TEST_GROUP_RUNNER(buffer_tests)
@@ -132,4 +147,5 @@ TEST_GROUP_RUNNER(buffer_tests)
 	RUN_TEST_CASE(buffer_tests, move_window_test);
 	RUN_TEST_CASE(buffer_tests, save_window_test);
 	RUN_TEST_CASE(buffer_tests, different_block_sizes);
+	RUN_TEST_CASE(buffer_tests, last_sector_test);
 }

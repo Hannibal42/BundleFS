@@ -59,7 +59,7 @@ TEST_SETUP(utility_tests)
 
 	for (i = 0; i < 65536; ++i)
 		buffer[i] = 0xFF;
-	disk_write(disk1, buffer, 0, 15);
+	disk_write(disk1, buffer, 0, 16);
 
 	disk_shutdown(disk1);
 	disk_initialize(disk1);
@@ -482,11 +482,30 @@ TEST(utility_tests, delete_seq_global_test)
 }
 
 TEST(utility_tests, write_seq_global_test) {
+	int i;
+
+	disk_read(disk1, buffer, 0, 16);
+	for (i = 0; i < 4096; ++i)
+		buffer[i] = 0x00;
+	disk_write(disk1, buffer, 1, 16);
+
+	/* Small sequence  */
+	TEST_ASSERT_TRUE(write_seq_global(fs.at_win, 0, 10));
+	disk_read(disk1, buffer, 0, 16);
+	TEST_ASSERT_EQUAL_HEX8(0xFF, buffer[0]);
+	TEST_ASSERT_EQUAL_HEX8(0x00, buffer[2]);
 
 }
 
 TEST(utility_tests, find_seq_global_1_test) {
 	uint i;
+	/* Smallest sequence */
+	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, 1, &i));
+	buffer[0] = 0x7F;
+	disk_write(disk1, buffer, 0, 16);
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 1, &i));
+	TEST_ASSERT_EQUAL_INT(0, i);
+
 	/* Small sequence */
 	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, 40, &i));
 
@@ -514,16 +533,80 @@ TEST(utility_tests, find_seq_global_1_test) {
 	/* Sequence at the end of the allocation table  */
 	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, 32, &i));
 
-	buffer[40000] = 0x00;
-	buffer[40001] = 0x00;
-	buffer[40002] = 0x00;
-	buffer[40003] = 0x00;
+
+	/* TODO: What the fuck is not working with this?
+	Weird bug
+	buffer[4096 * 10 -1] = 0x00;
+	buffer[4096 * 10 -2] = 0x00;
+	buffer[4096 * 10 -3] = 0x00;
+	buffer[4096 * 10 -4] = 0x00;
 	disk_write(disk1, buffer, 0, 16);
+	*/
+	TEST_ASSERT_TRUE(move_window(fs.at_win, 9));
+	fs.at_win->buffer[4095] = 0x00;
+	fs.at_win->buffer[4094] = 0x00;
+	fs.at_win->buffer[4093] = 0x00;
+	fs.at_win->buffer[4092] = 0x00;
+	TEST_ASSERT_TRUE(save_window(fs.at_win));
 
 	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 32, &i));
 	TEST_ASSERT_EQUAL(327648, i);
+}
 
+/* Test some sequences that are longer than one buffer window */
+TEST(utility_tests, find_seq_global_2_test) {
+	int i, tmp;
+	uint k;
 
+	/* Window buffer size +1 */
+	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, 4097 * 8, &k));
+	for (i = 0; i < 4097; ++i)
+		buffer[i] = 0x00;
+
+	disk_write(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 4097 * 8, &k));
+	TEST_ASSERT_EQUAL_INT(0, k);
+
+	/* Sequence not starting at zero */
+	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, 5000 * 8, &k));
+	buffer[0] = 0xFF;
+	for (i = 1; i < 5001; ++i)
+		buffer[i] = 0x00;
+	disk_write(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 5000 * 8, &k));
+	TEST_ASSERT_EQUAL_INT(8, k);
+
+	/* 4 sector sequence */
+	tmp = 4096 * 4;
+	TEST_ASSERT_FALSE(find_seq_global(fs.at_win, tmp * 8, &k));
+
+	for (i = 0; i < tmp; ++i)
+		buffer[i] = 0x00;
+
+	disk_write(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, tmp * 8, &k));
+	TEST_ASSERT_EQUAL_INT(0, k);
+
+	/*Start in the second sector*/
+	for (i = 0; i < 4096; ++i)
+		buffer[i] = 0xFF;
+
+	disk_write(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 5000, &k));
+	TEST_ASSERT_EQUAL_INT(4096 * 8, k);
+
+	/*All sectors*/
+	for (i = 0; i < 4096 * 10; ++i)
+		buffer[i] = 0;
+
+	disk_write(disk1, buffer, 0, 16);
+
+	TEST_ASSERT_TRUE(find_seq_global(fs.at_win, 4096 * 10 * 8, &k));
+	TEST_ASSERT_EQUAL_INT(0, k);
 }
 
 TEST_GROUP_RUNNER(utility_tests)
@@ -545,4 +628,5 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, delete_seq_global_test);
 	RUN_TEST_CASE(utility_tests, write_seq_global_test);
 	RUN_TEST_CASE(utility_tests, find_seq_global_1_test);
+	RUN_TEST_CASE(utility_tests, find_seq_global_2_test);
 }

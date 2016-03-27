@@ -39,7 +39,7 @@ bool move_window(struct AT_WINDOW *win, int index)
 		return false;
 
 	win->isValid = false;
-	win->global_index = win->global_start + index;
+	win->global_index = new_index;
 	if (disk_read(win->disk, win->buffer, win->global_index, win->sectors) != RES_OK)
 		return false;
 
