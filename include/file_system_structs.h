@@ -49,9 +49,14 @@ struct FILE_SYSTEM {
 	uint32_t alloc_table_buffer_size;
 	/**
 	 * The struct which holds the buffer that is used to access
-	 * the allocation table and inode table.
+	 * the allocation table.
 	 */
 	struct AT_WINDOW *at_win;
+	/**
+	 * The struct which holds the buffer that is used to access
+	 * the inode allocation table.
+	 */
+	//struct AT_WINDOW *it_win;
 	/**
 	 *  The index of the start sector of the inode allocation table.
 	 */

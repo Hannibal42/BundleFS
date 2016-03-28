@@ -3,6 +3,8 @@
 
 bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
 {
+	int i;
+
 	win->isValid = false;
 	win->buffer = buffer;
 	win->global_start = fs->alloc_table;
@@ -14,6 +16,9 @@ bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)
 
 	win->sector_size = fs->sector_size;
 	win->disk = fs->disk;
+
+	for (i = 0; i < fs->alloc_table_buffer_size; ++i)
+		win->buffer[i] = 0x00;
 
 	if (disk_read(win->disk, win->buffer, win->global_start, win->sectors) != RES_OK)
 		return false;

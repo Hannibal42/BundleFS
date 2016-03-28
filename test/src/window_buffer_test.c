@@ -93,6 +93,7 @@ TEST(buffer_tests, init_window_test)
 TEST(buffer_tests, move_window_test)
 {
 	init_window(window, fs, buffer);
+
 	TEST_ASSERT_FALSE(move_window(window, 100));
 	window->buffer[0] = 0XFF;
 	window->buffer[1] = 0XFF;

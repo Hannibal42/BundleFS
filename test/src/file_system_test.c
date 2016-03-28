@@ -13,7 +13,6 @@ extern bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file,
 	uint size);
 extern void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 extern uint inodes_used(struct FILE_SYSTEM *fs);
-extern void defragment(struct FILE_SYSTEM *fs);
 extern bool resize_inode_block(struct FILE_SYSTEM *fs);
 
 TEST_GROUP(fs_tests);
@@ -49,17 +48,6 @@ TEST_SETUP(fs_tests)
 	fs_mkfs(disk2, 128);
 	fs_mkfs(disk3, 256);
 	fs_mkfs(disk4, 512);
-
-	/*Force the disk to write*/
-	disk_shutdown(disk1);
-	disk_shutdown(disk2);
-	disk_shutdown(disk3);
-	disk_shutdown(disk4);
-
-	disk_initialize(disk1);
-	disk_initialize(disk2);
-	disk_initialize(disk3);
-	disk_initialize(disk4);
 
 	/* Inode filling */
 	in1.size = 10;
@@ -685,6 +673,7 @@ TEST(fs_tests, load_inodes_block)
 	TEST_ASSERT_EQUAL_UINT(tmp[0].size, inodes[0].size);
 	TEST_ASSERT_EQUAL_UINT(tmp[1].size, inodes[2].size);
 
+	//free(fs1.at_win);
 	free(tmp);
 }
 
