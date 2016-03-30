@@ -87,6 +87,7 @@ enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 		return FS_DISK_ERROR;
 
 	free(at_win);
+	fs->at_win = NULL;
 	free(fs);
 	fs = NULL;
 	return FS_OK;
@@ -233,7 +234,7 @@ enum FSRESULT fs_close(struct FILE_SYSTEM *fs, struct INODE *file)
 	return FS_OK;
 }
 
-enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs)
+enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs, struct AT_WINDOW *win)
 {
 
 	unsigned long sector_size;
@@ -246,7 +247,8 @@ enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs)
 
 	memcpy(fs, SEC_BUFFER, sizeof(struct FILE_SYSTEM));
 	fs->disk = disk;
-	fs->at_win = malloc(sizeof(struct AT_WINDOW));
+	fs->at_win = win;
+	//fs->at_win = malloc(sizeof(struct AT_WINDOW));
 	init_window(fs->at_win, fs, AT_BUFFER);
 
 	return FS_OK;
@@ -296,7 +298,7 @@ uint32_t size, uint64_t time_to_live, bool custody)
 				fs->inode_alloc_table_size) != RES_OK)
 				return FS_DISK_ERROR;
 			/* This mount is needed because the metadata changed */
-			fs_mount(fs->disk, fs);
+			fs_mount(fs->disk, fs, fs->at_win);
 			++byt_ino_tab;
 			ino_off = find_bit(IT_BUFFER, byt_ino_tab);
 		} else {

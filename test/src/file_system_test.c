@@ -1,6 +1,7 @@
 #include "../include/file_system_test.h"
 
 struct DISK *disk1, *disk2, *disk3, *disk4;
+struct AT_WINDOW *win1, *win2, *win3;
 struct FILE_SYSTEM fs1, fs2, fs3;
 struct INODE in1, in2, in3, in4;
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
@@ -100,6 +101,13 @@ TEST_SETUP(fs_tests)
 		data2[i] = 0xD0;
 	for (i = 0; i < 2048; ++i)
 		data3[i] = 0xEE;
+
+	win1 = malloc(sizeof(struct AT_WINDOW));
+	win2 = malloc(sizeof(struct AT_WINDOW));
+	win3 = malloc(sizeof(struct AT_WINDOW));
+	fs1.at_win = win1;
+	fs2.at_win = win2;
+	fs3.at_win = win3;
 }
 
 TEST_TEAR_DOWN(fs_tests)
@@ -119,6 +127,9 @@ TEST_TEAR_DOWN(fs_tests)
 	free(data1);
 	free(data2);
 	free(data3);
+	free(win1);
+	free(win2);
+	free(win3);
 }
 
 TEST(fs_tests, free_disk_space_test)
@@ -130,7 +141,7 @@ TEST(fs_tests, free_disk_space_test)
 	tmp = malloc(sizeof(struct INODE));
 	now = (uint) time(NULL);
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 
 	fs_create(&fs1, tmp, 1, 0, false);
 
@@ -166,7 +177,7 @@ TEST(fs_tests, fs_create_test)
 	al_tab = malloc(fs1.sector_size * fs1.alloc_table_size);
 	in_tab = malloc(fs1.sector_size * fs1.inode_alloc_table_size);
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 	tmp = fs_getfree(&fs1) / fs1.sector_size;
 	for (i = 0; i < 8; ++i) {
 		tmp_time = (uint) time(NULL) + 10000;
@@ -186,7 +197,7 @@ TEST(fs_tests, fs_create_test)
 		}
 	}
 
-	fs_mount(disk2, &fs2);
+	fs_mount(disk2, &fs2, win2);
 	tmp = fs_getfree(&fs2) - fs2.sector_size - 200;
 	res = fs_create(&fs2, &inodes[0], tmp, 100, false);
 	TEST_ASSERT_EQUAL(FS_OK, res);
@@ -201,7 +212,7 @@ TEST(fs_tests, find_ino_length_test)
 {
 	struct INODE tmp;
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 
 	TEST_ASSERT_FALSE(find_ino_length(&fs1, &tmp, 128));
 	fs_create(&fs1, &in1, 128, 100, false);
@@ -225,7 +236,7 @@ TEST(fs_tests, fs_write_test)
 	buffer = malloc(100);
 	buffer2 = malloc(128);
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 	fs_create(&fs1, tmp, 100, 10, true);
 
 	for (i = 0; i < 100; ++i)
@@ -284,7 +295,7 @@ TEST(fs_tests, fs_read_test)
 	buffer = malloc(100);
 	buffer2 = malloc(100);
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 	fs_create(&fs1, tmp, 100, 10, true);
 
 	for (i = 0; i < 100; ++i)
@@ -328,7 +339,7 @@ TEST(fs_tests, fs_delete_test2)
 {
 	uint8_t *buffer;
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 	fs_create(&fs1, &in1, 1, 100000, true);
 	fs_create(&fs1, &in2, 1, 100000, true);
 	fs_create(&fs1, &in3, 1, 100000, true);
@@ -361,7 +372,7 @@ TEST(fs_tests, fs_delete_test)
 
 	tmp = malloc(sizeof(struct INODE));
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 	fs_create(&fs1, &in1, 100, 100, false);
 	fs_create(&fs1, &in2, 100, 100, false);
 	fs_create(&fs1, &in3, 100, 100, false);
@@ -388,10 +399,10 @@ TEST(fs_tests, fs_getfree_test)
 {
 	uint i, tmp;
 	struct FILE_SYSTEM fs[3] = {fs1, fs2, fs3};
-	struct DISK *disks[4] = {disk1, disk2, disk3, disk4};
+	struct DISK *disks[3] = {disk2, disk3, disk4};
 
 	for (i = 0; i < 3; ++i) {
-		fs_mount(disks[i], &fs[i]);
+		fs_mount(disks[i], &fs[i], win1);
 		tmp = fs[i].sector_count;
 		tmp -= fs[i].inode_block + fs[i].inode_block_size;
 		TEST_ASSERT_EQUAL_UINT(fs_getfree(&fs[i]),
@@ -415,7 +426,7 @@ TEST(fs_tests, fs_open_test)
 	struct INODE *tmp;
 	struct INODE inodes[3] = {in1, in2, in3};
 
-	fs_mount(disk2, &fs1);
+	fs_mount(disk2, &fs1, win1);
 	buffer = malloc(fs1.sector_size);
 	tmp = malloc(sizeof(struct INODE));
 
@@ -443,11 +454,11 @@ TEST(fs_tests, fs_open_test)
 TEST(fs_tests, fs_mount_test)
 {
 	uint i, tmp;
-	struct DISK *disks[4] = {disk1, disk2, disk3, disk4};
+	struct DISK *disks[3] = {disk2, disk3, disk4};
 
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < 3; ++i) {
 		disk_initialize(disks[i]);
-		TEST_ASSERT_EQUAL(FS_OK, fs_mount(disks[i], &fs1));
+		TEST_ASSERT_EQUAL(FS_OK, fs_mount(disks[i], &fs1, win1));
 
 		TEST_ASSERT_EQUAL_UINT(fs1.sector_size, disks[i]->block_size);
 		TEST_ASSERT_EQUAL_UINT(fs1.sector_count,
@@ -480,9 +491,9 @@ TEST(fs_tests, fs_mkfs_test)
 	uint k, at_size, it_size, ino_max, ib_size, tmp;
 	uint8_t *buffer;
 	struct FILE_SYSTEM *fs;
-	struct DISK *disks[4] = {disk1, disk2, disk3, disk4};
+	struct DISK *disks[3] = {disk2, disk3, disk4};
 
-	for (k = 0; k < 4; ++k) {
+	for (k = 0; k < 3; ++k) {
 
 		buffer = malloc(disks[k]->block_size);
 		fs = malloc(sizeof(struct FILE_SYSTEM));
@@ -542,7 +553,7 @@ TEST(fs_tests, write_inode_test)
 	struct INODE inodes[3] = {in1, in2, in3};
 	struct INODE *tmp_in;
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 
 	for (i = 0; i < 3; ++i) {
 		write_inode(&fs1, &inodes[i]);
@@ -558,12 +569,12 @@ TEST(fs_tests, write_inode_test)
 TEST(fs_tests, inodes_used_test)
 {
 	uint i, k, tmp;
-	struct DISK *disks[4] = {disk1, disk2, disk3, disk4};
+	struct DISK *disks[3] = {disk2, disk3, disk4};
 	struct INODE inodes[3] = {in1, in2, in3};
 
-	for (k = 0; k < 4; ++k) {
+	for (k = 0; k < 3; ++k) {
 		tmp = 0;
-		fs_mount(disks[k], &fs1);
+		fs_mount(disks[k], &fs1, win1);
 		for (i = 0; i < 2; ++i) {
 			TEST_ASSERT_EQUAL_UINT(inodes_used(&fs1), tmp);
 			if (fs_create(&fs1, &inodes[i], 64, 1, true) == FS_OK)
@@ -577,7 +588,7 @@ TEST(fs_tests, resize_inode_block_test)
 {
 	uint8_t *tmp;
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 	TEST_ASSERT_TRUE(resize_inode_block(&fs1));
 
 	tmp = malloc(fs1.sector_size * fs1.inode_alloc_table_size);
@@ -621,7 +632,7 @@ TEST(fs_tests, resize_inode_block_test2)
 {
 	uint8_t *tmp;
 
-	fs_mount(disk4, &fs1);
+	fs_mount(disk4, &fs1, win1);
 	TEST_ASSERT_TRUE(resize_inode_block(&fs1));
 
 	tmp = malloc(fs1.sector_size * fs1.inode_alloc_table_size);
@@ -653,7 +664,7 @@ TEST(fs_tests, load_inodes_block)
 	struct INODE *tmp;
 	struct INODE inodes[3] = {in1, in2, in3};
 
-	fs_mount(disk1, &fs1);
+	fs_mount(disk1, &fs1, win1);
 
 	for (i = 0; i < 3; ++i)
 		fs_create(&fs1, &inodes[i], 1, 1, true);
@@ -673,7 +684,6 @@ TEST(fs_tests, load_inodes_block)
 	TEST_ASSERT_EQUAL_UINT(tmp[0].size, inodes[0].size);
 	TEST_ASSERT_EQUAL_UINT(tmp[1].size, inodes[2].size);
 
-	//free(fs1.at_win);
 	free(tmp);
 }
 
