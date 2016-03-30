@@ -248,7 +248,6 @@ enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs, struct AT_WIND
 	memcpy(fs, SEC_BUFFER, sizeof(struct FILE_SYSTEM));
 	fs->disk = disk;
 	fs->at_win = win;
-	//fs->at_win = malloc(sizeof(struct AT_WINDOW));
 	init_window(fs->at_win, fs, AT_BUFFER);
 
 	return FS_OK;
@@ -275,8 +274,9 @@ unsigned long fs_getfree(struct FILE_SYSTEM *fs)
 enum FSRESULT fs_create(struct FILE_SYSTEM *fs, struct INODE *file,
 uint32_t size, uint64_t time_to_live, bool custody)
 {
-	int all_off, ino_off;
-	uint bit_cnt, byt_ino_tab, byt_all_tab, sec_size;
+
+	int ino_off;
+	uint bit_cnt, byt_ino_tab, sec_size, all_off;
 
 	sec_size = fs->sector_size - check_size();
 	bit_cnt = div_up(size, sec_size);
@@ -307,24 +307,21 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	}
 
 	/*Finds a sequence of bits that are empty in the allocation table*/
-	byt_all_tab  = fs->alloc_table_size * fs->sector_size;
-	all_off = find_seq(AT_BUFFER, byt_all_tab, bit_cnt);
-
-	if (all_off < 0) {
+	if (!find_seq_global(fs->at_win, bit_cnt, &all_off)) {
 		if (free_disk_space(fs, size))
 			if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
 				fs->alloc_table_size) != RES_OK)
 				return FS_DISK_ERROR;
-			all_off = find_seq(AT_BUFFER, byt_all_tab,
-				bit_cnt);
+			//all_off = find_seq(AT_BUFFER, byt_all_tab,
+				//bit_cnt);
+			if (!find_seq_global(fs->at_win, bit_cnt, &all_off))
+				return FS_FULL;
 			if (disk_read(fs->disk, IT_BUFFER,
 				fs->inode_alloc_table,
 				fs->inode_alloc_table_size) != RES_OK)
 				return FS_DISK_ERROR;
 			ino_off = find_bit(IT_BUFFER, byt_ino_tab);
 
-		if (all_off < 0)
-			return FS_FULL;
 	}
 
 	/* Write the buffer */

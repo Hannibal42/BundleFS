@@ -193,7 +193,7 @@ TEST(fs_tests, fs_create_test)
 			tmp_byte = 0x80 >> i;
 			TEST_ASSERT_EQUAL(in_tab[0] & tmp_byte, tmp_byte);
 		} else {
-			TEST_ASSERT_EQUAL(res, FS_FULL);
+			TEST_ASSERT_EQUAL(FS_FULL, res);
 		}
 	}
 
@@ -689,7 +689,7 @@ TEST(fs_tests, load_inodes_block)
 
 TEST_GROUP_RUNNER(fs_tests)
 {
-	RUN_TEST_CASE(fs_tests, load_inodes_block);
+	//RUN_TEST_CASE(fs_tests, load_inodes_block);
 	RUN_TEST_CASE(fs_tests, fs_mkfs_test);
 	RUN_TEST_CASE(fs_tests, fs_mount_test);
 	RUN_TEST_CASE(fs_tests, free_disk_space_test);
