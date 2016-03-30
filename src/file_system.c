@@ -312,8 +312,6 @@ uint32_t size, uint64_t time_to_live, bool custody)
 			if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
 				fs->alloc_table_size) != RES_OK)
 				return FS_DISK_ERROR;
-			//all_off = find_seq(AT_BUFFER, byt_all_tab,
-				//bit_cnt);
 			if (!find_seq_global(fs->at_win, bit_cnt, &all_off))
 				return FS_FULL;
 			if (disk_read(fs->disk, IT_BUFFER,

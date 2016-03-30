@@ -53,11 +53,6 @@ struct FILE_SYSTEM {
 	 */
 	struct AT_WINDOW *at_win;
 	/**
-	 * The struct which holds the buffer that is used to access
-	 * the inode allocation table.
-	 */
-	//struct AT_WINDOW *it_win;
-	/**
 	 *  The index of the start sector of the inode allocation table.
 	 */
 	uint32_t inode_alloc_table;
@@ -82,6 +77,11 @@ struct FILE_SYSTEM {
 	 * The number of inodes that fit into one sector
 	 */
 	uint32_t inode_sec;
+	/**
+	 * The struct which holds the buffer that is used to access
+	 * the inode allocation table.
+	 */
+	struct AT_WINDOW *it_win;
 };
 
 /**

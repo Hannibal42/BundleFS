@@ -689,7 +689,7 @@ TEST(fs_tests, load_inodes_block)
 
 TEST_GROUP_RUNNER(fs_tests)
 {
-	//RUN_TEST_CASE(fs_tests, load_inodes_block);
+	RUN_TEST_CASE(fs_tests, load_inodes_block);
 	RUN_TEST_CASE(fs_tests, fs_mkfs_test);
 	RUN_TEST_CASE(fs_tests, fs_mount_test);
 	RUN_TEST_CASE(fs_tests, free_disk_space_test);

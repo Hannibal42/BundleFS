@@ -44,11 +44,11 @@ int find_bit(const uint8_t *table, uint table_size);
  *  @param[in] length The length of the sequence in bit
  *  @return The start index of the sequence in bit, or -1 if no sequence was found.
  */
-int find_seq(const uint8_t *table, uint table_size, uint length);
+//int find_seq(const uint8_t *table, uint table_size, uint length);
 /* Writes a sequence of 'length' bits starting from 'index' */
-void write_seq(uint8_t *table, uint index, uint length);
+//void write_seq(uint8_t *table, uint index, uint length);
 /* Deletes a sequence of 'length' bits starting from 'index' */
-void delete_seq(uint8_t *table, uint index, uint length);
+//void delete_seq(uint8_t *table, uint index, uint length);
 int first_free_bits(uint8_t byte);
 int last_free_bits(uint8_t byte);
 int get_free_bit(uint8_t index, uint8_t byte);

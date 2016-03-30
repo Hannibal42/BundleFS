@@ -6,16 +6,12 @@
 void defragment(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
-	uint ino_cnt, k, sec_cnt, al_tab_sec, old_loc, che_size;
-	int i, r, tmp;
+	uint ino_cnt, k, sec_cnt, old_loc, che_size, tmp;
+	int i, r;
 
 	ino_cnt = inodes_used(fs);
 	inodes = malloc(ino_cnt * sizeof(struct INODE));
 	load_inodes_block(fs, inodes);
-
-	al_tab_sec = fs->alloc_table_size * fs->sector_size;
-	disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
 
 	/* The Inodes are sorted by their location */
 	quicksort_inodes(inodes, ino_cnt);
@@ -25,17 +21,15 @@ void defragment(struct FILE_SYSTEM *fs)
 		che_size = fs->sector_size - check_size();
 		sec_cnt = div_up(inodes[i].size, che_size);
 
-		tmp = find_seq(AT_BUFFER, al_tab_sec, sec_cnt);
-
 		/* Checks if the file can be copied */
-		if (tmp < 0) {
+		if (!find_seq_global(fs->at_win, sec_cnt, &tmp)) {
 			k = inodes[i].location;
 			continue;
 		}
 
-		write_seq(AT_BUFFER, tmp, sec_cnt);
-		disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-			fs->alloc_table_size);
+		write_seq_global(fs->at_win, tmp, sec_cnt);
+		if (!save_window(fs->at_win))
+			return;
 
 		/* Makes a copy of the file block by block*/
 		for (r = 0; r < sec_cnt; ++r) {
@@ -52,15 +46,17 @@ void defragment(struct FILE_SYSTEM *fs)
 		/* Checks if the copy is at the right place already */
 		if (k == (fs->sector_count - tmp)) {
 			k = inodes[i].location;
-			delete_seq(AT_BUFFER,
-				fs->sector_count - old_loc - sec_cnt, sec_cnt);
-			disk_write(fs->disk, AT_BUFFER,
-				fs->alloc_table, fs->alloc_table_size);
+			if (!delete_seq_global(fs->at_win, fs->sector_count - old_loc - sec_cnt, sec_cnt))
+				return;
+			if(!save_window(fs->at_win))
+				return;
 			continue;
 		}
 
-		delete_seq(AT_BUFFER, fs->sector_count - old_loc, sec_cnt);
-		write_seq(AT_BUFFER, fs->sector_count - (k - sec_cnt), sec_cnt);
+		if (!delete_seq_global(fs->at_win, fs->sector_count - old_loc, sec_cnt))
+			return;
+		if (!write_seq_global(fs->at_win, fs->sector_count - (k - sec_cnt), sec_cnt))
+			return;
 
 		/* Copy file to the right place */
 		for (r = 0; r < sec_cnt; ++r) {
@@ -70,13 +66,14 @@ void defragment(struct FILE_SYSTEM *fs)
 				k - sec_cnt + r, 1);
 		}
 
-		disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-			fs->alloc_table_size);
+		if(!save_window(fs->at_win))
+			return;
 		inodes[i].location = k - sec_cnt;
 		write_inode(fs, &inodes[i]);
-		delete_seq(AT_BUFFER, tmp, sec_cnt);
-		disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-			fs->alloc_table_size);
+		if (!delete_seq_global(fs->at_win, tmp, sec_cnt))
+			return;
+		if(!save_window(fs->at_win))
+			return;
 		k = inodes[i].location;
 	}
 	free(inodes);
@@ -118,22 +115,24 @@ blocks that are marked allocated, but dont belong to an inode */
 void restore_fs(struct FILE_SYSTEM *fs)
 {
 	struct INODE *inodes;
-	uint ino_cnt, tmp, ino_size, i, k, *pos;
-
+	uint ino_cnt, tmp, ino_size, i, k, m, *pos;
 
 	/* Wipes the allocation table clean */
 	tmp = (fs->sector_count / 8);
-	for (i = 0; i < fs->alloc_table_size * fs->sector_size; ++i) {
-		if (i < tmp)
-			AT_BUFFER[i] = 0x00;
-		else
-			AT_BUFFER[i] = 0xFF;
+	for (i = 0; i < fs->alloc_table_size; ++i) {
+		m = i * fs->alloc_table_buffer_size;
+		for (k = 0; k < fs->alloc_table_buffer_size; ++k) {
+			if (m + k < tmp)
+				fs->at_win->buffer[k] = 0x00;
+			else
+				fs->at_win->buffer[k] = 0xFF;
+		}
 	}
 
 	/* Write the superblock into the allocation table */
 	tmp = fs->sector_count;
 	tmp -= (fs->inode_block + fs->inode_block_size);
-	write_seq(AT_BUFFER, tmp, fs->inode_block + fs->inode_block_size);
+	write_seq_global(fs->at_win, tmp, fs->inode_block + fs->inode_block_size);
 
 	/* Loads every valid inode and write it into the allocation table */
 	pos = malloc(fs->inode_sec * sizeof(uint));
@@ -148,12 +147,11 @@ void restore_fs(struct FILE_SYSTEM *fs)
 			ino_size = div_up(inodes[i].size,
 				fs->sector_size - check_size());
 			tmp = fs->sector_count - inodes[i].location - ino_size;
-			write_seq(AT_BUFFER, tmp, ino_size);
+			write_seq_global(fs->at_win, tmp, ino_size);
 		}
 	}
 
-	disk_write(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size);
+	save_window(fs->at_win);
 
 	free(pos);
 }

@@ -10,6 +10,9 @@ struct DISK *disk1;
 struct FILE_SYSTEM fs;
 
 extern int find_seq_byte(uint8_t byte, uint length);
+extern int find_seq(const uint8_t *table, uint table_size, uint length);
+extern void write_seq(uint8_t *table, uint index, uint length);
+extern void delete_seq(uint8_t *table, uint index, uint length);
 
 
 TEST_GROUP(utility_tests);
