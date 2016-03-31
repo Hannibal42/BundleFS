@@ -95,11 +95,11 @@ bool check_seq_global(struct AT_WINDOW *win, uint index, uint length);
 bool find_seq_global(struct AT_WINDOW *win, uint length, uint *index);
 /**
  * Finds the largest sequence of 0s in the table.
- * @param[in] win The window strut holding the buffer.
+ * @param[in] win The window struct holding the buffer.
+ * @param[out] start The start bit of the sequence found.
  * @param[out] length The lenght of the seqence found.
- * @param[out] index The start bit of the sequence found.
  * @return True if a sequence was found, false if an error occurred.
  */
-bool find_largest_seq_global(struct AT_WINDOW *win, uint *length, uint *index);
+bool find_max_sequence_global(struct AT_WINDOW *win, uint *start, uint *length);
 
 #endif /* BIT_FUNCTIONS_H */

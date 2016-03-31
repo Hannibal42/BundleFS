@@ -13,6 +13,8 @@ extern int find_seq_byte(uint8_t byte, uint length);
 extern int find_seq(const uint8_t *table, uint table_size, uint length);
 extern void write_seq(uint8_t *table, uint index, uint length);
 extern void delete_seq(uint8_t *table, uint index, uint length);
+extern inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_start,
+		uint *max_length, uint *end_start, uint *end_length, bool *start_in_table);
 
 
 TEST_GROUP(utility_tests);
@@ -612,6 +614,80 @@ TEST(utility_tests, find_seq_global_2_test) {
 	TEST_ASSERT_EQUAL_INT(0, k);
 }
 
+TEST(utility_tests, find_max_sequence_test) {
+	//TEST_ASSERT_FALSE(true);
+
+	uint i, max_start, max_length, end_start, end_length;
+	bool start_in_table;
+
+	max_length = 0;
+	max_start = 0;
+
+	/* No full free byte */
+	find_max_sequence(data1, 128, &max_start, &max_length,
+			&end_start, &end_length, &start_in_table);
+
+	TEST_ASSERT_EQUAL_UINT(0, max_start);
+	TEST_ASSERT_EQUAL_UINT(0, max_length);
+	TEST_ASSERT_FALSE(start_in_table);
+
+	/* Some sequences  */
+	data1[20] = 0x00;
+	data1[21] = 0x00;
+
+	data1[10] = 0x00;
+	data1[60] = 0x00;
+
+	find_max_sequence(data1, 128, &max_start, &max_length,
+			&end_start, &end_length, &start_in_table);
+
+	TEST_ASSERT_EQUAL_UINT(160, max_start);
+	TEST_ASSERT_EQUAL_UINT(16, max_length);
+	TEST_ASSERT_EQUAL_UINT(1024, end_start);
+	TEST_ASSERT_EQUAL_UINT(0, end_length);
+	TEST_ASSERT_TRUE(start_in_table);
+
+	/* Long sequence at the start and sequence at the end */
+	max_start = 0;
+	max_length = 0;
+	end_start = 0;
+	end_length = 0;
+
+	for (i = 0; i < 30; ++i)
+		data1[i] = 0x00;
+
+	for (i = 120; i < 128; ++i)
+		data1[i] = 0x00;
+
+	find_max_sequence(data1, 128, &max_start, &max_length,
+			&end_start, &end_length, &start_in_table);
+
+	TEST_ASSERT_EQUAL_UINT(0, max_start);
+	TEST_ASSERT_EQUAL_UINT(30 * 8, max_length);
+	TEST_ASSERT_EQUAL_UINT(120 * 8, end_start);
+	TEST_ASSERT_EQUAL_UINT(8 * 8, end_length);
+	TEST_ASSERT_TRUE(start_in_table);
+
+	/* Sequence that started before, that is maximum*/
+	max_start = 1337;
+	max_length = 3000;
+	end_start = 1337;
+	end_length = 3000;
+
+	find_max_sequence(data1, 128, &max_start, &max_length,
+			&end_start, &end_length, &start_in_table);
+
+	TEST_ASSERT_EQUAL_UINT(1337, max_start);
+	TEST_ASSERT_EQUAL_UINT(3240, max_length);
+	TEST_ASSERT_EQUAL_UINT(120 * 8, end_start);
+	TEST_ASSERT_EQUAL_UINT(8 * 8, end_length);
+	TEST_ASSERT_FALSE(start_in_table);
+}
+
+TEST(utility_tests, find_max_sequence_global_test) {
+	TEST_ASSERT_FALSE(true);
+}
+
 TEST_GROUP_RUNNER(utility_tests)
 {
 	RUN_TEST_CASE(utility_tests, get_ino_pos_test);
@@ -632,4 +708,6 @@ TEST_GROUP_RUNNER(utility_tests)
 	RUN_TEST_CASE(utility_tests, write_seq_global_test);
 	RUN_TEST_CASE(utility_tests, find_seq_global_1_test);
 	RUN_TEST_CASE(utility_tests, find_seq_global_2_test);
+	RUN_TEST_CASE(utility_tests, find_max_sequence_test);
+	RUN_TEST_CASE(utility_tests, find_max_sequence_global_test);
 }

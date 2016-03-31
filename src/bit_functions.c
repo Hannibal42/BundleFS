@@ -62,6 +62,76 @@ int find_seq_byte(uint8_t byte, uint length)
 	return -1;
 }
 
+/* Finds the longest sequence of zeroes in the table and returns it the index in
+ * max_start and the length in max_length. If there is a sequence of zeroes at the end
+ * its start index is returned in end_start. Sequences that are smaller than a byte,
+ * or that start/end in a byte are ignored. So the start/end of a sequence is always
+ * at the border of two bytes */
+inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_start,
+		uint *max_length, uint *end_start, uint *end_length, bool *start_in_table) {
+
+	int i, tmp_length, tmp_start;
+
+	tmp_length = *end_length;
+	tmp_start = *end_start;
+	/* Is there a old sequence to complete? */
+	if (tmp_length == 0)
+		*start_in_table = true;
+	else
+		*start_in_table = false;
+
+	for(i = 0; i < table_size; ++i) {
+		if (table[i] != 0x00) {
+			tmp_start = (i + 1) * 8;
+			tmp_length = 0;
+			continue;
+		}
+
+		tmp_length += 8;
+
+		if (tmp_length > *max_length) {
+			*max_start = tmp_start;
+			*max_length = tmp_length;
+
+			/* Checks if the sequence start
+			 * before the table */
+			if (i * 8 - tmp_length > 0)
+				*start_in_table = true;
+		}
+	}
+	*end_length = tmp_length;
+	*end_start = tmp_start;
+}
+
+bool find_max_sequence_global(struct AT_WINDOW *win, uint *start, uint *length) {
+
+	uint i, tmp_start, tmp_length, tmp_end_start, tmp_end_length, tmp_global_start, buffer_length;
+	bool start_in_sec;
+
+	tmp_start = 0;
+	tmp_length = 0;
+	tmp_end_start = 0;
+	tmp_end_length = 0;
+	start_in_sec = false;
+	tmp_global_start = 0;
+	buffer_length = win->sector_size * win->sectors;
+
+	for (i = 0; i <= win->global_end; ++i) {
+		if (!move_window(win, i))
+			return false;
+
+		find_max_sequence(win->buffer, buffer_length, &tmp_start,
+				&tmp_length, &tmp_end_start, &tmp_end_length, &start_in_sec);
+
+		if (start_in_sec)
+			tmp_global_start = i;
+	}
+
+	*start = win->sector_size * tmp_global_start + tmp_start;
+	*length = tmp_length;
+	return true;
+}
+
 /* Length must be < 9 for this, and the table must be > 0*/
 int find_seq_small(const uint8_t *table, uint table_size, uint length)
 {
