@@ -11,6 +11,7 @@ enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 	struct FILE_SYSTEM *fs;
 	unsigned long sec_cnt, sec_size, fil_cnt, size;
 	struct AT_WINDOW *at_win;
+	struct AT_WINDOW *it_win;
 
 	/*Gets the sector size*/
 	if (disk_ioctl(disk, GET_SECTOR_SIZE, &sec_size) != RES_OK)
@@ -34,6 +35,7 @@ enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 	fs->alloc_table_size = div_up(sec_cnt, sec_size * 8);
 	fs->alloc_table = 1;
 	fs->alloc_table_buffer_size = AT_BUFFER_SIZE;
+	fs->inode_alloc_table_buffer_size = IT_BUFFER_SIZE;
 	/*Make inode_alloc_table*/
 	fs->inode_alloc_table_size = fs->alloc_table_size;
 	fs->inode_alloc_table = fs->alloc_table + fs->alloc_table_size;
@@ -50,13 +52,21 @@ enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 	/* Make Inode table */
 	size = sec_size * fs->inode_alloc_table_size;
 	for (i = 0; i < size; ++i)
-		IT_BUFFER[i] = 0xFF;
+		SEC_BUFFER[i] = 0xFF;
+	for (i = 0; i < fs->inode_alloc_table_size; ++i)
+		if (disk_write(disk, SEC_BUFFER, fs->inode_alloc_table + i, 1) != RES_OK)
+			return FS_DISK_ERROR;
 
-	delete_seq(IT_BUFFER, 0, fs->inode_max);
+	it_win = malloc(sizeof(struct AT_WINDOW));
+	fs->disk = disk;
+	init_window_it(it_win, fs, IT_BUFFER);
+	fs->it_win = it_win;
 
-	if (disk_write(disk, IT_BUFFER, fs->inode_alloc_table,
-	fs->inode_alloc_table_size) != RES_OK)
+	if (!delete_seq_global(it_win, 0, fs->inode_max))
 		return FS_DISK_ERROR;
+	if (!save_window(it_win))
+		return FS_DISK_ERROR;
+
 
 	/* Make Allocation table */
 	size = sec_size * fs->alloc_table_size;
@@ -68,7 +78,6 @@ enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 			return FS_DISK_ERROR;
 
 	at_win = malloc(sizeof(struct AT_WINDOW));
-	fs->disk = disk;
 	init_window(at_win, fs, AT_BUFFER);
 	fs->at_win = at_win;
 
@@ -87,6 +96,8 @@ enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size)
 		return FS_DISK_ERROR;
 
 	free(at_win);
+	free(it_win);
+	fs->it_win = NULL;
 	fs->at_win = NULL;
 	free(fs);
 	fs = NULL;
@@ -100,15 +111,20 @@ enum FSRESULT fs_open(struct FILE_SYSTEM *fs, uint number,
 	uint offset, sector;
 	uint8_t tmp;
 
-	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size) != RES_OK)
-		return FS_DISK_ERROR;
+	//if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+	//	fs->inode_alloc_table_size) != RES_OK)
+	//	return FS_DISK_ERROR;
 
 	offset = number % 8;
 	sector = number / 8;
+//TODO: Realize this with check_seq_global
+	if (!move_window(fs->it_win, sector / fs->inode_alloc_table_buffer_size))
+		return FS_DISK_ERROR;
+
+	sector %= fs->inode_alloc_table_buffer_size;
 
 	tmp =  0x80 >> offset;
-	if (!(IT_BUFFER[sector] & tmp))
+	if (!(fs->it_win->buffer[sector] & tmp))
 		return FS_PARAM_ERROR;
 
 	offset = (number % fs->inode_sec) * sizeof(struct INODE);
@@ -136,13 +152,17 @@ enum FSRESULT fs_delete(struct FILE_SYSTEM *fs, struct INODE *file)
 		return FS_DISK_ERROR;
 
 	/*Free bit in inode_table*/
-	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size) != RES_OK)
+	//if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+	//	fs->inode_alloc_table_size) != RES_OK)
+	//	return FS_DISK_ERROR;
+	//write_bit(IT_BUFFER, file->inode_offset, false);
+	if (!delete_seq_global(fs->it_win, file->inode_offset, 1))
 		return FS_DISK_ERROR;
-	write_bit(IT_BUFFER, file->inode_offset, false);
 
-	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size) != RES_OK)
+	//if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
+	//	fs->inode_alloc_table_size) != RES_OK)
+	//	return FS_DISK_ERROR;
+	if (!save_window(fs->it_win))
 		return FS_DISK_ERROR;
 	if (!save_window(fs->at_win))
 		return FS_DISK_ERROR;
@@ -234,7 +254,7 @@ enum FSRESULT fs_close(struct FILE_SYSTEM *fs, struct INODE *file)
 	return FS_OK;
 }
 
-enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs, struct AT_WINDOW *win)
+enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs)
 {
 
 	unsigned long sector_size;
@@ -247,8 +267,10 @@ enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs, struct AT_WIND
 
 	memcpy(fs, SEC_BUFFER, sizeof(struct FILE_SYSTEM));
 	fs->disk = disk;
-	fs->at_win = win;
+	fs->at_win = &AT_WINDOW;
+	fs->it_win = &IT_WINDOW;
 	init_window(fs->at_win, fs, AT_BUFFER);
+	init_window_it(fs->it_win, fs, IT_BUFFER);
 
 	return FS_OK;
 }
@@ -281,9 +303,9 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	sec_size = fs->sector_size - check_size();
 	bit_cnt = div_up(size, sec_size);
 
-	if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size) != RES_OK)
-		return FS_DISK_ERROR;
+	//if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
+	//	fs->alloc_table_size) != RES_OK)
+	//	return FS_DISK_ERROR;
 	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
 		fs->inode_alloc_table_size) != RES_OK)
 		return FS_DISK_ERROR;
@@ -298,7 +320,7 @@ uint32_t size, uint64_t time_to_live, bool custody)
 				fs->inode_alloc_table_size) != RES_OK)
 				return FS_DISK_ERROR;
 			/* This mount is needed because the metadata changed */
-			fs_mount(fs->disk, fs, fs->at_win);
+			fs_mount(fs->disk, fs);
 			++byt_ino_tab;
 			ino_off = find_bit(IT_BUFFER, byt_ino_tab);
 		} else {

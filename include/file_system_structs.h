@@ -47,6 +47,10 @@ struct FILE_SYSTEM {
 	 *  The size of the allocation table buffer in byte
 	 */
 	uint32_t alloc_table_buffer_size;
+	/*
+	 * The size of the inode allocation table buffer in byte
+	 */
+	uint32_t inode_alloc_table_buffer_size;
 	/**
 	 * The struct which holds the buffer that is used to access
 	 * the allocation table.

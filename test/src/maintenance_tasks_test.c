@@ -5,7 +5,6 @@
 
 struct DISK *disk1;
 struct FILE_SYSTEM fs1;
-struct AT_WINDOW win;
 struct INODE in1, in2, in3, in4;
 uint8_t *data1, *data2;
 
@@ -76,7 +75,7 @@ TEST(tasks_tests, defragment_test)
 	struct INODE inodes[3] = {in1, in2, in3};
 	struct INODE tmp;
 
-	fs_mount(disk1, &fs1, &win);
+	fs_mount(disk1, &fs1);
 
 	for (i = 0; i < 3; ++i)
 		fs_create(&fs1, &inodes[i], fs1.sector_size, 1, true);
@@ -125,7 +124,7 @@ TEST(tasks_tests, defragment_test2)
 	struct INODE inodes[8];
 	uint8_t *buf;
 
-	fs_mount(disk1, &fs1, &win);
+	fs_mount(disk1, &fs1);
 
 	for (i = 0; i < 3; ++i) {
 		fs_create(&fs1, &tmp, fs1.sector_size, 1, true);
@@ -174,7 +173,7 @@ TEST(tasks_tests, delete_invalid_inodes_test)
 
 	now = (uint) time(NULL);
 
-	fs_mount(disk1, &fs1, &win);
+	fs_mount(disk1, &fs1);
 
 	free_disk_space = fs_getfree(&fs1);
 	fs_create(&fs1, &in1, 100, now + 100, true);
@@ -201,7 +200,7 @@ TEST(tasks_tests, restore_fs_test)
 	int i;
 	uint8_t *tmp, *tmp_cpy;
 
-	fs_mount(disk1, &fs1, &win);
+	fs_mount(disk1, &fs1);
 
 	fs_create(&fs1, &in1, 100, 100, false);
 	fs_create(&fs1, &in2, 100, 100, false);
@@ -236,7 +235,7 @@ TEST(tasks_tests, restore_fs_test2)
 	int i;
 	uint8_t *tmp, *tmp_cpy;
 
-	fs_mount(disk1, &fs1, &win);
+	fs_mount(disk1, &fs1);
 
 	fs_create(&fs1, &in1, 100, 1000, false);
 	fs_create(&fs1, &in2, 500, 100, false);
@@ -272,7 +271,7 @@ TEST(tasks_tests, delete_invalid_inodes_test2)
 	struct timeval t;
 	int tmp;
 
-	fs_mount(disk1, &fs1, &win);
+	fs_mount(disk1, &fs1);
 
 	gettimeofday(&t, NULL);
 	now = (uint) t.tv_sec;

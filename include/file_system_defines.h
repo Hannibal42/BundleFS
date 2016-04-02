@@ -26,6 +26,11 @@
  *  (needs to be a multiple of SECTOR_SIZE)
  */
 #define AT_BUFFER_SIZE 1 * SECTOR_SIZE
+/**
+ * The size of the inode allocation table buffer in byte
+ * (needs to be a multiple of SECTOR_SIZE)
+ */
+#define IT_BUFFER_SIZE 1 * SECTOR_SIZE
 /*
  * The initial maximum number of inodes
  */

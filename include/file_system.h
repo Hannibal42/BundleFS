@@ -40,7 +40,7 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 /* Creates the on-disk structures for the file system */
 enum FSRESULT fs_mkfs(struct DISK *disk, uint sector_size);
 /* Reads the fs from the given disk*/
-enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs, struct AT_WINDOW *win);
+enum FSRESULT fs_mount(struct DISK *disk, struct FILE_SYSTEM *fs);
 /* Returns how many sectors are still free */
 unsigned long fs_getfree(struct FILE_SYSTEM *fs);
 

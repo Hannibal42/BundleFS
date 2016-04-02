@@ -70,11 +70,10 @@ TEST(system_tests, overflow_disk_test)
 {
 	uint i, k;
 	struct FILE_SYSTEM fs;
-	struct AT_WINDOW win;
 	struct INODE tmp;
 
 	for (k = 0; k < 8; ++k) {
-		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs, &win));
+		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs));
 		for (i = 0; i < 10000; ++i)
 			if (fs_create(&fs, &tmp, 100, 100, false) != FS_OK) {
 				delete_invalid_inodes(&fs);
@@ -89,14 +88,13 @@ TEST(system_tests, mul_read_writes_test)
 {
 	uint i, k, r;
 	struct FILE_SYSTEM fs;
-	struct AT_WINDOW win;
 	struct INODE tmp;
 	uint8_t *buffer;
 
 	buffer = malloc(100);
 
 	for (k = 0; k < 8; ++k) {
-		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs, &win));
+		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs));
 		for (i = 0; i < 1000; ++i) {
 			TEST_ASSERT_EQUAL(FS_OK, fs_create(&fs, &tmp,
 				100, 100, false));
@@ -118,7 +116,6 @@ TEST(system_tests, different_data_test)
 {
 	uint i, k, r, n;
 	struct FILE_SYSTEM fs;
-	struct AT_WINDOW win;
 	struct INODE tmp;
 	uint8_t *buffer;
 
@@ -126,7 +123,7 @@ TEST(system_tests, different_data_test)
 
 
 	for (k = 0; k < 8; ++k) {
-		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs, &win));
+		TEST_ASSERT_EQUAL(FS_OK, fs_mount(&disks[k], &fs));
 		for (n = 0; n < 5; ++n) {
 			for (i = 0; i < 1000; ++i) {
 				TEST_ASSERT_EQUAL(FS_OK, fs_create(&fs, &tmp,
