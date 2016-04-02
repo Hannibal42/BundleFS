@@ -74,11 +74,7 @@ inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_s
 
 	tmp_length = *end_length;
 	tmp_start = *end_start;
-	/* Is there a old sequence to complete? */
-	if (tmp_length == 0)
-		*start_in_table = true;
-	else
-		*start_in_table = false;
+	*start_in_table = false;
 
 	for(i = 0; i < table_size; ++i) {
 		if (table[i] != 0x00) {
@@ -95,7 +91,7 @@ inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_s
 
 			/* Checks if the sequence start
 			 * before the table */
-			if (i * 8 - tmp_length > 0)
+			if ((i + 1) * 8 - tmp_length >= 0)
 				*start_in_table = true;
 		}
 	}

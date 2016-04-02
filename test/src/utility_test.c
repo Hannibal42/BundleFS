@@ -487,18 +487,35 @@ TEST(utility_tests, delete_seq_global_test)
 }
 
 TEST(utility_tests, write_seq_global_test) {
-	int i;
+	int i, k;
 
-	disk_read(disk1, buffer, 0, 16);
-	for (i = 0; i < 4096; ++i)
-		buffer[i] = 0x00;
-	disk_write(disk1, buffer, 1, 16);
+	for (k = 0; k <= fs.at_win->global_end; ++k) {
+		move_window(fs.at_win, i);
+		for (i = 0; i < 4096; ++i)
+			fs.at_win->buffer[i] = 0x00;
+	}
+	save_window(fs.at_win);
 
 	/* Small sequence  */
 	TEST_ASSERT_TRUE(write_seq_global(fs.at_win, 0, 10));
-	disk_read(disk1, buffer, 0, 16);
-	TEST_ASSERT_EQUAL_HEX8(0xFF, buffer[0]);
-	TEST_ASSERT_EQUAL_HEX8(0x00, buffer[2]);
+	TEST_ASSERT_EQUAL_HEX8(0xFF, fs.at_win->buffer[0]);
+	TEST_ASSERT_EQUAL_HEX8(0xC0, fs.at_win->buffer[1]);
+
+	/* Longer sequence */
+	TEST_ASSERT_TRUE(write_seq_global(fs.at_win, 20, 300));
+	TEST_ASSERT_EQUAL_HEX8(0xC0, fs.at_win->buffer[1]);
+	TEST_ASSERT_EQUAL_HEX8(0x0F, fs.at_win->buffer[2]);
+	for (i = 4; i < 38; ++i)
+		TEST_ASSERT_EQUAL_HEX8(0xFF, fs.at_win->buffer[i]);
+
+	/* Over two sectors */
+	TEST_ASSERT_TRUE(write_seq_global(fs.at_win, 4095 * 8, 240));
+	move_window(fs.at_win, 0);
+	TEST_ASSERT_EQUAL_HEX8(0x00, fs.at_win->buffer[4094]);
+	TEST_ASSERT_EQUAL_HEX8(0xFF, fs.at_win->buffer[4095]);
+	move_window(fs.at_win, 1);
+	for (i = 0; i < 29; ++i)
+		TEST_ASSERT_EQUAL_HEX8(0xFF, fs.at_win->buffer[i]);
 
 }
 
@@ -682,10 +699,72 @@ TEST(utility_tests, find_max_sequence_test) {
 	TEST_ASSERT_EQUAL_UINT(120 * 8, end_start);
 	TEST_ASSERT_EQUAL_UINT(8 * 8, end_length);
 	TEST_ASSERT_FALSE(start_in_table);
+
+	/* No sequence that started before, but old maximum */
+	max_start = 1337;
+	max_length = 3000;
+	end_start = 0;
+	end_length = 0;
+
+	find_max_sequence(data1, 128, &max_start, &max_length,
+			&end_start, &end_length, &start_in_table);
+
+	TEST_ASSERT_EQUAL_UINT(1337, max_start);
+	TEST_ASSERT_EQUAL_UINT(3000, max_length);
+	TEST_ASSERT_EQUAL_UINT(120 * 8, end_start);
+	TEST_ASSERT_EQUAL_UINT(8 * 8, end_length);
+	TEST_ASSERT_FALSE(start_in_table);
 }
 
 TEST(utility_tests, find_max_sequence_global_test) {
-	TEST_ASSERT_FALSE(true);
+	uint i, k, start, length, buffer_size;
+
+	buffer_size = fs.at_win->sector_size * fs.at_win->sectors;
+
+	/* Easy sequence */
+	TEST_ASSERT_TRUE(find_max_sequence_global(fs.at_win, &start, &length));
+	TEST_ASSERT_EQUAL_UINT(0, length);
+
+	TEST_ASSERT_TRUE(move_window(fs.at_win, 0));
+	for (i = 50; i < 100; ++i)
+		fs.at_win->buffer[i] = 0x00;
+
+	TEST_ASSERT_TRUE(find_max_sequence_global(fs.at_win, &start, &length));
+	TEST_ASSERT_EQUAL_UINT(50 * 8, start);
+	TEST_ASSERT_EQUAL_UINT(50 * 8, length);
+
+	/* Sequence over two sectors */
+	TEST_ASSERT_TRUE(move_window(fs.at_win, 0));
+	for (i = 4000; i < buffer_size; ++i)
+		fs.at_win->buffer[i] = 0x00;
+	TEST_ASSERT_TRUE(move_window(fs.at_win, 1));
+	for (i = 0; i < 100; ++i)
+		fs.at_win->buffer[i] = 0x00;
+	TEST_ASSERT_TRUE(find_max_sequence_global(fs.at_win, &start, &length));
+	TEST_ASSERT_EQUAL_UINT(4000 * 8, start);
+	TEST_ASSERT_EQUAL_UINT((96 + 100) * 8, length);
+
+	/* On empty sector in the middle */
+	TEST_ASSERT_TRUE(move_window(fs.at_win, 1));
+	for (i = 0; i < buffer_size; ++i)
+		fs.at_win->buffer[i] = 0x00;
+	TEST_ASSERT_TRUE(move_window(fs.at_win, 2));
+	for (i = 0; i < 100; ++i)
+		fs.at_win->buffer[i] = 0x00;
+	TEST_ASSERT_TRUE(find_max_sequence_global(fs.at_win, &start, &length));
+	TEST_ASSERT_EQUAL_UINT(4000 * 8, start);
+	TEST_ASSERT_EQUAL_UINT((196 + 4096) * 8, length);
+
+	/*Empty allocation table*/
+	for (k = 0; k <= fs.at_win->global_end; ++k) {
+		TEST_ASSERT_TRUE(move_window(fs.at_win, k));
+		for (i = 0; i < buffer_size; ++i)
+			fs.at_win->buffer[i] = 0x00;
+	}
+
+	TEST_ASSERT_TRUE(find_max_sequence_global(fs.at_win, &start, &length));
+	TEST_ASSERT_EQUAL_UINT(0, start);
+	TEST_ASSERT_EQUAL_UINT((4096 * (fs.at_win->global_end + 1)) * 8, length);
 }
 
 TEST_GROUP_RUNNER(utility_tests)
