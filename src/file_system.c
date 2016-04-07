@@ -390,13 +390,8 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 {
 	uint tmp;
 
-	if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-		fs->alloc_table_size) != RES_OK)
-		return false;
-
-	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size) != RES_OK)
-		return false;
+	//TODO: Can this be removed? Why do i need a reload?
+	reload_window(fs->at_win);
 
 	tmp = fs->sector_count - (fs->inode_block + fs->inode_block_size);
 	tmp -= 1;
@@ -406,13 +401,13 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 
 	if (!write_seq_global(fs->at_win, tmp, 1))
 		return false;
-	delete_seq(IT_BUFFER, fs->inode_max, fs->inode_sec);
+	if (!delete_seq_global(fs->it_win, fs->inode_max, fs->inode_sec))
+		return false;
 
 	if (!save_window(fs->at_win))
 		return false;
 
-	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size) != RES_OK)
+	if (!save_window(fs->it_win))
 		return false;
 
 	/* Update superblock */

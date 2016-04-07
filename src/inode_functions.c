@@ -64,14 +64,15 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 	size = fs->inode_max / 8;
 
 	ret_val = 0;
-	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
-	for (i = 0; i < size; ++i)
-		ret_val += popcount(IT_BUFFER[i]);
+	for (k = 0; k < fs->alloc_table_size; ++k) {
+		move_window(fs->it_win, k);
+		for (i = 0; i < size; ++i)
+			ret_val += popcount(fs->it_win->buffer[i]);
+	}
 
 	for (k = 0; k < (fs->inode_max % 8); ++k) {
 		tmp = 0x80 >> k;
-		if (tmp & IT_BUFFER[i])
+		if (tmp & fs->it_win->buffer[i])
 			++ret_val;
 	}
 

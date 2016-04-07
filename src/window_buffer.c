@@ -85,3 +85,10 @@ bool save_window(struct AT_WINDOW *win)
 		return false;
 	return true;
 }
+
+bool reload_window(struct AT_WINDOW *win)
+{
+	if (disk_read(win->disk, win->buffer, win->global_index, win->sectors) != RES_OK)
+		return false;
+	return true;
+}

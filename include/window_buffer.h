@@ -55,4 +55,9 @@ bool move_window(struct AT_WINDOW *win, int index);
  */
 bool save_window(struct AT_WINDOW *win);
 
+/**
+ *
+ */
+bool reload_window(struct AT_WINDOW *win);
+
 #endif /* WINDOW_BUFFER_H */
