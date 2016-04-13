@@ -297,32 +297,22 @@ enum FSRESULT fs_create(struct FILE_SYSTEM *fs, struct INODE *file,
 uint32_t size, uint64_t time_to_live, bool custody)
 {
 
-	int ino_off;
-	uint bit_cnt, byt_ino_tab, sec_size, all_off;
+	uint bit_cnt, byt_ino_tab, sec_size, all_off, ino_off;
 
 	sec_size = fs->sector_size - check_size();
 	bit_cnt = div_up(size, sec_size);
 
-	//if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-	//	fs->alloc_table_size) != RES_OK)
-	//	return FS_DISK_ERROR;
-	if (disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size) != RES_OK)
-		return FS_DISK_ERROR;
-
 	/*Finds and writes a free inode in the inode alloc table*/
 	byt_ino_tab = fs->inode_alloc_table_size * fs->sector_size;
-	ino_off = find_bit(IT_BUFFER, byt_ino_tab);
-	if (ino_off < 0) {
+	if (!find_seq_global(fs->it_win, 1, &ino_off)) {
 		if (resize_inode_block(fs)) {
-			if (disk_read(fs->disk, IT_BUFFER,
-				fs->inode_alloc_table,
-				fs->inode_alloc_table_size) != RES_OK)
+			if (!reload_window(fs->it_win))
 				return FS_DISK_ERROR;
 			/* This mount is needed because the metadata changed */
 			fs_mount(fs->disk, fs);
 			++byt_ino_tab;
-			ino_off = find_bit(IT_BUFFER, byt_ino_tab);
+			if (!find_seq_global(fs->it_win, 1, &ino_off))
+				return FS_DISK_ERROR;
 		} else {
 			return FS_FULL;
 		}
@@ -331,23 +321,22 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	/*Finds a sequence of bits that are empty in the allocation table*/
 	if (!find_seq_global(fs->at_win, bit_cnt, &all_off)) {
 		if (free_disk_space(fs, size))
-			if (disk_read(fs->disk, AT_BUFFER, fs->alloc_table,
-				fs->alloc_table_size) != RES_OK)
+			if (!reload_window(fs->at_win))
 				return FS_DISK_ERROR;
 			if (!find_seq_global(fs->at_win, bit_cnt, &all_off))
 				return FS_FULL;
-			if (disk_read(fs->disk, IT_BUFFER,
-				fs->inode_alloc_table,
-				fs->inode_alloc_table_size) != RES_OK)
+			if (!reload_window(fs->it_win))
 				return FS_DISK_ERROR;
-			ino_off = find_bit(IT_BUFFER, byt_ino_tab);
+			if (!find_seq_global(fs->it_win, 1, &ino_off))
+				return FS_FULL;
 
 	}
 
 	/* Write the buffer */
 	if (!write_seq_global(fs->at_win, all_off, bit_cnt))
 		return FS_DISK_ERROR;
-	write_bit(IT_BUFFER, ino_off, true);
+	if (!write_seq_global(fs->it_win, ino_off, 1))
+		return FS_DISK_ERROR;
 
 	file->size = size;
 	file->location = fs->sector_count - all_off - bit_cnt;
@@ -358,8 +347,7 @@ uint32_t size, uint64_t time_to_live, bool custody)
 	/* Write all to disk */
 	if (!save_window(fs->at_win))
 		return FS_DISK_ERROR;
-	if (disk_write(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size) != RES_OK)
+	if (!save_window(fs->it_win))
 		return FS_DISK_ERROR;
 	write_inode(fs, file);
 
@@ -390,8 +378,8 @@ bool resize_inode_block(struct FILE_SYSTEM *fs)
 {
 	uint tmp;
 
-	//TODO: Can this be removed? Why do i need a reload?
-	reload_window(fs->at_win);
+	if (!reload_window(fs->at_win))
+		return FS_DISK_ERROR;
 
 	tmp = fs->sector_count - (fs->inode_block + fs->inode_block_size);
 	tmp -= 1;

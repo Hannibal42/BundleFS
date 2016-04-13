@@ -89,11 +89,9 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 	/* TODO: Maybe make tmp into a dynamic data structure */
 	tmp = malloc(inodes_used(fs) * sizeof(uint));
 	pos = malloc(fs->inode_sec * sizeof(uint));
-	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
 
 	for (k = 0; k < fs->inode_block_size; ++k) {
-		get_ino_pos(fs, IT_BUFFER, fs->inode_sec * k, pos, &ino_cnt);
+		get_ino_pos_new(fs, fs->inode_sec * k, pos, &ino_cnt);
 		inodes = (struct INODE *) INO_BUFFER;
 		load_inode_block(fs, inodes, pos, ino_cnt, k);
 		for (i = 0; i < ino_cnt; ++i) {
@@ -136,11 +134,9 @@ void restore_fs(struct FILE_SYSTEM *fs)
 
 	/* Loads every valid inode and write it into the allocation table */
 	pos = malloc(fs->inode_sec * sizeof(uint));
-	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
 
 	for (k = 0; k < fs->inode_block_size; ++k) {
-		get_ino_pos(fs, IT_BUFFER, fs->inode_sec * k, pos, &ino_cnt);
+		get_ino_pos_new(fs, fs->inode_sec * k, pos, &ino_cnt);
 		inodes = (struct INODE *) INO_BUFFER;
 		load_inode_block(fs, inodes, pos, ino_cnt, k);
 		for (i = 0; i < ino_cnt; ++i) {

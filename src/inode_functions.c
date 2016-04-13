@@ -1,6 +1,10 @@
 #include "inode_functions.h"
 
 
+void get_ino_pos_new(struct FILE_SYSTEM *fs,
+	uint offset, uint *pos, uint *ino_cnt);
+
+
 /* Finds the first inode that can be deleted and returns that inode*/
 bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 {
@@ -8,11 +12,9 @@ bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 	struct INODE *inodes;
 
 	pos = malloc(fs->inode_sec * sizeof(uint));
-	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
 
 	for (k = 0; k < fs->inode_block_size; ++k) {
-		get_ino_pos(fs, IT_BUFFER, fs->inode_sec * k, pos, &ino_cnt);
+		get_ino_pos_new(fs, fs->inode_sec * k, pos, &ino_cnt);
 		inodes = (struct INODE *) INO_BUFFER;
 		load_inode_block(fs, inodes, pos, ino_cnt, k);
 		for (i = 0; i < ino_cnt; ++i) {
@@ -103,6 +105,42 @@ void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 	}
 }
 
+inline uint8_t access_table(struct AT_WINDOW *at_win, uint32_t position){
+	uint global_index, tmp, local_index;
+
+	tmp = at_win->sectors * at_win->sector_size;
+	global_index = position / tmp;
+	local_index = position % tmp;
+
+	move_window(at_win, global_index);
+
+	return at_win->buffer[local_index];
+}
+
+/* Returns the position of all inodes in a block */
+void get_ino_pos_new(struct FILE_SYSTEM *fs,
+	uint offset, uint *pos, uint *ino_cnt)
+{
+	uint i, tmp_byte, shift, start;
+
+	start = offset / 8;
+	*ino_cnt = 0;
+	shift = offset % 8;
+
+	for (i = 0; i < fs->inode_sec; ++i) {
+		tmp_byte = 0x80 >> shift;
+		if (access_table(fs->it_win, start) & tmp_byte) {
+			pos[*ino_cnt] = i;
+			(*ino_cnt)++;
+		}
+		++shift;
+		if (shift > 7) {
+			shift = 0;
+			++start;
+		}
+	}
+}
+
 /* Loads all valid inodes from a block, the functions needs the position
  of all valid inodes and in ino_cnt the number of valid inodes*/
 void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
@@ -124,15 +162,12 @@ void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
 	uint i, *ino_pos, ino_cnt, offset, ino_off;
 
-	disk_read(fs->disk, IT_BUFFER, fs->inode_alloc_table,
-		fs->inode_alloc_table_size);
-
 	offset = 0;
 	ino_off = 0;
 	ino_pos = malloc(fs->inode_sec * sizeof(uint32_t));
 
 	for (i = 0; i < fs->inode_block_size; ++i) {
-		get_ino_pos(fs, IT_BUFFER, offset, ino_pos, &ino_cnt);
+		get_ino_pos_new(fs, offset, ino_pos, &ino_cnt);
 		load_inode_block(fs, &buffer[ino_off], ino_pos, ino_cnt, i);
 		ino_off += ino_cnt;
 		offset += fs->inode_sec;

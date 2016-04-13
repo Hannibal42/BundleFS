@@ -6,6 +6,7 @@
 
 #include "bit_functions.h"
 #include "file_system_structs.h"
+#include "window_buffer.h"
 
 /**
  * Sorts the inodes by its location ascending with quicksort
