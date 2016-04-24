@@ -87,6 +87,7 @@ enum DRESULT disk_write(struct DISK *disk, uint8_t *buff, uint sector,
  * Returns information about the disk, see the defines for cmd
  * @param[in] disk The struct representing the disk
  * @param[in] cmd The command
+ * @param[out] buff Buffer for a return
  */
 enum DRESULT disk_ioctl(struct DISK *disk, char cmd, unsigned long *buff);
 

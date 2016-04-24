@@ -1,4 +1,4 @@
-#include "../include/window_buffer.h"
+#include "window_buffer.h"
 
 
 bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs, uint8_t *buffer)

@@ -1,5 +1,7 @@
-#include "../include/bit_functions.h"
+#include "bit_functions.h"
 
+int first_free_bits(uint8_t byte);
+int last_free_bits(uint8_t byte);
 
 /*Writes the given bit into the allocation table*/
 void write_bit(uint8_t *table, uint index, bool bit_value)
@@ -20,7 +22,8 @@ void write_bit(uint8_t *table, uint index, bool bit_value)
 	}
 }
 
-/*Finds the next free bit in the allocation table*/
+/*TODO: Remove
+ * Finds the next free bit in the allocation table
 int find_bit(const uint8_t *table, uint size)
 {
 	uint i, k;
@@ -29,9 +32,9 @@ int find_bit(const uint8_t *table, uint size)
 	for (i = 0; i < size; ++i) {
 		if (table[i] != 0xFF)
 			break;
-	}
+	}*/
 
-	/*No free inodes*/
+	/*No free inodes
 	if (i >= size)
 		return -1;
 
@@ -40,8 +43,8 @@ int find_bit(const uint8_t *table, uint size)
 		if ((table[i] & tmp_byte) == 0x00)
 			return (8 * i) + k;
 	}
-	return -2;/* This should never happen */
-}
+	return -2;*//* This should never happen
+}*/
 
 int find_seq_byte(uint8_t byte, uint length)
 {
@@ -101,7 +104,8 @@ inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_s
 
 bool find_max_sequence_global(struct AT_WINDOW *win, uint *start, uint *length) {
 
-	uint i, tmp_start, tmp_length, tmp_end_start, tmp_end_length, tmp_global_start, buffer_length;
+	uint i, tmp_start, tmp_length, tmp_end_start, tmp_end_length,
+	tmp_global_start, buffer_length;
 	bool start_in_sec;
 
 	tmp_start = 0;
@@ -157,7 +161,8 @@ int find_seq_small(const uint8_t *table, uint table_size, uint length)
 }
 
 /* Length must be < 9 for this, and the table must be > 0*/
-int find_seq_small_new(const uint8_t *table, uint table_size, uint length, uint *end_length)
+int find_seq_small_new(const uint8_t *table, uint table_size, uint length,
+		uint *end_length)
 {
 	uint i;
 	int tmp;
@@ -214,7 +219,8 @@ int find_seq(const uint8_t *table, uint table_size, uint length)
 }
 
 
-int find_seq_new(const uint8_t *table, uint table_size, uint length, uint *end_length)
+int find_seq_new(const uint8_t *table, uint table_size, uint length,
+		uint *end_length)
 {
 	uint tmp;
 	uint i, start;
@@ -614,7 +620,6 @@ int last_free_bits(uint8_t byte)
 	return 8;
 }
 
-/*stolen from the internet, counts the 1 bits in a byte*/
 int popcount(uint8_t byte)
 {
 	return ((0x876543210 >>

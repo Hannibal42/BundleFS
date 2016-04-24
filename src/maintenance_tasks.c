@@ -1,6 +1,4 @@
-#include "../include/maintenance_tasks.h"
-
-#include "../include/window_buffer.h"
+#include "maintenance_tasks.h"
 
 /* Defragments the files on disk */
 void defragment(struct FILE_SYSTEM *fs)
@@ -11,7 +9,7 @@ void defragment(struct FILE_SYSTEM *fs)
 
 	ino_cnt = inodes_used(fs);
 	inodes = malloc(ino_cnt * sizeof(struct INODE));
-	load_inodes_block(fs, inodes);
+	load_all_inodes(fs, inodes);
 
 	/* The Inodes are sorted by their location */
 	quicksort_inodes(inodes, ino_cnt);
@@ -46,7 +44,8 @@ void defragment(struct FILE_SYSTEM *fs)
 		/* Checks if the copy is at the right place already */
 		if (k == (fs->sector_count - tmp)) {
 			k = inodes[i].location;
-			if (!delete_seq_global(fs->at_win, fs->sector_count - old_loc - sec_cnt, sec_cnt))
+			if (!delete_seq_global(fs->at_win,
+					fs->sector_count - old_loc - sec_cnt, sec_cnt))
 				return;
 			if(!save_window(fs->at_win))
 				return;
@@ -79,7 +78,6 @@ void defragment(struct FILE_SYSTEM *fs)
 	free(inodes);
 }
 
-/* This should be a regular task executed by upcn */
 void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 {
 	uint i, k, ino_cnt, *pos;

@@ -1,11 +1,7 @@
 #include "inode_functions.h"
 
 
-void get_ino_pos_new(struct FILE_SYSTEM *fs,
-	uint offset, uint *pos, uint *ino_cnt);
-
-
-/* Finds the first inode that can be deleted and returns that inode*/
+/* Finds the first inode that can be deleted and returns that inode */
 bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 {
 	uint i, k, ino_cnt, *pos;
@@ -81,7 +77,7 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 	return ret_val;
 }
 
-/* Returns the position of all inodes in a block */
+/* Returns the position of all inodes in a sector */
 void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 	uint offset, uint *pos, uint *ino_cnt)
 {
@@ -105,6 +101,7 @@ void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 	}
 }
 
+/* Small helper function to access the allocation-table without changing the code  */
 inline uint8_t access_table(struct AT_WINDOW *at_win, uint32_t position){
 	uint global_index, tmp, local_index;
 
@@ -158,7 +155,7 @@ void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
 }
 
 /* Loads all inodes into the buffer, the inodes are loaded block by block */
-void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
+void load_all_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 {
 	uint i, *ino_pos, ino_cnt, offset, ino_off;
 
@@ -176,6 +173,7 @@ void load_inodes_block(struct FILE_SYSTEM *fs, struct INODE *buffer)
 	free(ino_pos);
 }
 
+/* compares to inodes positions */
 int cmp_INODES(const void *a, const void *b)
 {
 	struct INODE *tmp_a, *tmp_b;

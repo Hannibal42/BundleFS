@@ -658,7 +658,7 @@ TEST(fs_tests, resize_inode_block_test2)
 	free(tmp);
 }
 
-TEST(fs_tests, load_inodes_block)
+TEST(fs_tests, load_all_inodes)
 {
 	uint i;
 	struct INODE *tmp;
@@ -670,7 +670,7 @@ TEST(fs_tests, load_inodes_block)
 		fs_create(&fs1, &inodes[i], 1, 1, true);
 
 	tmp = malloc(sizeof(struct INODE) * inodes_used(&fs1));
-	load_inodes_block(&fs1, tmp);
+	load_all_inodes(&fs1, tmp);
 
 	for (i = 0; i < 3; ++i)
 		TEST_ASSERT_EQUAL_UINT(inodes[i].size, tmp[i].size);
@@ -679,7 +679,7 @@ TEST(fs_tests, load_inodes_block)
 	fs_delete(&fs1, &inodes[1]);
 
 	tmp = malloc(sizeof(struct INODE) * inodes_used(&fs1));
-	load_inodes_block(&fs1, tmp);
+	load_all_inodes(&fs1, tmp);
 
 	TEST_ASSERT_EQUAL_UINT(tmp[0].size, inodes[0].size);
 	TEST_ASSERT_EQUAL_UINT(tmp[1].size, inodes[2].size);
@@ -689,7 +689,7 @@ TEST(fs_tests, load_inodes_block)
 
 TEST_GROUP_RUNNER(fs_tests)
 {
-	RUN_TEST_CASE(fs_tests, load_inodes_block);
+	RUN_TEST_CASE(fs_tests, load_all_inodes);
 	RUN_TEST_CASE(fs_tests, fs_mkfs_test);
 	RUN_TEST_CASE(fs_tests, fs_mount_test);
 	RUN_TEST_CASE(fs_tests, free_disk_space_test);

@@ -1,7 +1,5 @@
 #include "file_system.h"
 
-#include "../include/window_buffer.h"
-
 bool free_disk_space(struct FILE_SYSTEM *fs, uint size);
 bool resize_inode_block(struct FILE_SYSTEM *fs);
 
