@@ -24,7 +24,8 @@
 struct FILE_SYSTEM {
 	/**
 	 * The size of one logical sector of the file system in byte.
-	 * One logical sector is always a multiple of the physical disk block size.
+	 * One logical sector is always a multiple
+	 * of the physical disk block size.
 	 */
 	uint32_t sector_size;
 	/**

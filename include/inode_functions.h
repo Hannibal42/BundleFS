@@ -27,10 +27,10 @@
 void quicksort_inodes(struct INODE *inodes, int nitems);
 
 /*
- *  Finds the first inode with a minimum lenght that can be deleted
- * 	@param[in] fs The struct holding the file system metadata
- * 	@param[out] file The inode that can be deleted
- * 	@param[in] size The size in byte that the inode needs to have
+ * Finds the first inode with a minimum lenght that can be deleted
+ * @param[in] fs The struct holding the file system metadata
+ * @param[out] file The inode that can be deleted
+ * @param[in] size The size in byte that the inode needs to have
  * */
 bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size);
 
@@ -55,8 +55,8 @@ void write_inode(struct FILE_SYSTEM *fs, struct INODE *file);
 
 /**
  *  Loads all inodes into the buffer, the inodes are loaded sector by sector
- *	@param[in] fs The struct holding the file system metadata
- *	@param[out] buffer The buffer with all inodes.
+ *  @param[in] fs The struct holding the file system metadata
+ *  @param[out] buffer The buffer with all inodes.
  **/
 void load_all_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer);
 
@@ -80,7 +80,7 @@ void load_inode_block(struct FILE_SYSTEM *fs, struct INODE *buffer,
  * @param[out] pos The array containing the positions of the inodes
  * @param[out] ino_cnt The number of inodes found
  */
-void get_ino_pos_new(struct FILE_SYSTEM *fs,
+void get_ino_pos(struct FILE_SYSTEM *fs,
 	uint offset, uint *pos, uint *ino_cnt);
 
 #endif /* INCLUDE_INODE_FUNCTIONS_H_ */

@@ -91,6 +91,20 @@ enum FSRESULT fs_write(struct FILE_SYSTEM *fs, struct INODE *file,
 	uint8_t *buffer);
 
 /**
+ * Creates a new inode and writes the buffer to this new inode
+ * @param[in] fs The struct holding the file system metadata
+ * @param[out] file The inode for the new bundle
+ * @param[in] buffer The buffer with the data that should be written into the
+ * file
+ * @param[in] size The size of the new file and buffer in byte
+ * @param[in] time_to_live The ttl of the new file.
+ * @param[in] custody The bool that indicates if the bundle manager holds the
+ * custody for this bundle.
+ * */
+enum FSRESULT fs_create_write(struct FILE_SYSTEM *fs, struct INODE *file,
+	uint8_t *buffer, uint32_t size, uint64_t time_to_live, bool custody);
+
+/**
  *  Creates the on-disk structures for the file system
  *  @param[in] disk The struct holding the metadata for the disk
  *  @param[in] sector_size The size of one sector in byte, must be a multiple

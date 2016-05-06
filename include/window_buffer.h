@@ -85,10 +85,10 @@ bool init_window(struct AT_WINDOW *win, struct FILE_SYSTEM *fs,
 bool init_window_it(struct AT_WINDOW *win, struct FILE_SYSTEM *fs,
 		uint8_t *buffer);
 /**
- *  Saves the content of the buffer and then moves the window and
- *  loads the new part of the allocation table.
- * 	@param[in] win Pointer to the AT_WINDOW struct to be moved
- * 	@param[in] index The index the window should be moved to
+ * Saves the content of the buffer and then moves the window and
+ * loads the new part of the allocation table.
+ * @param[in] win Pointer to the AT_WINDOW struct to be moved
+ * @param[in] index The index the window should be moved to
  **/
 bool move_window(struct AT_WINDOW *win, int index);
 
