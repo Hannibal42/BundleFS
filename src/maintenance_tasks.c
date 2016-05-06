@@ -45,16 +45,19 @@ void defragment(struct FILE_SYSTEM *fs)
 		if (k == (fs->sector_count - tmp)) {
 			k = inodes[i].location;
 			if (!delete_seq_global(fs->at_win,
-					fs->sector_count - old_loc - sec_cnt, sec_cnt))
+					fs->sector_count - old_loc -
+					sec_cnt, sec_cnt))
 				return;
-			if(!save_window(fs->at_win))
+			if (!save_window(fs->at_win))
 				return;
 			continue;
 		}
 
-		if (!delete_seq_global(fs->at_win, fs->sector_count - old_loc, sec_cnt))
+		if (!delete_seq_global(fs->at_win,
+				fs->sector_count - old_loc, sec_cnt))
 			return;
-		if (!write_seq_global(fs->at_win, fs->sector_count - (k - sec_cnt), sec_cnt))
+		if (!write_seq_global(fs->at_win,
+				fs->sector_count - (k - sec_cnt), sec_cnt))
 			return;
 
 		/* Copy file to the right place */
@@ -65,13 +68,13 @@ void defragment(struct FILE_SYSTEM *fs)
 				k - sec_cnt + r, 1);
 		}
 
-		if(!save_window(fs->at_win))
+		if (!save_window(fs->at_win))
 			return;
 		inodes[i].location = k - sec_cnt;
 		write_inode(fs, &inodes[i]);
 		if (!delete_seq_global(fs->at_win, tmp, sec_cnt))
 			return;
-		if(!save_window(fs->at_win))
+		if (!save_window(fs->at_win))
 			return;
 		k = inodes[i].location;
 	}
@@ -89,7 +92,7 @@ void delete_invalid_inodes(struct FILE_SYSTEM *fs)
 	pos = malloc(fs->inode_sec * sizeof(uint));
 
 	for (k = 0; k < fs->inode_block_size; ++k) {
-		get_ino_pos_new(fs, fs->inode_sec * k, pos, &ino_cnt);
+		get_ino_pos(fs, fs->inode_sec * k, pos, &ino_cnt);
 		inodes = (struct INODE *) INO_BUFFER;
 		load_inode_block(fs, inodes, pos, ino_cnt, k);
 		for (i = 0; i < ino_cnt; ++i) {
@@ -128,13 +131,14 @@ void restore_fs(struct FILE_SYSTEM *fs)
 	/* Write the superblock into the allocation table */
 	tmp = fs->sector_count;
 	tmp -= (fs->inode_block + fs->inode_block_size);
-	write_seq_global(fs->at_win, tmp, fs->inode_block + fs->inode_block_size);
+	write_seq_global(fs->at_win, tmp,
+			fs->inode_block + fs->inode_block_size);
 
 	/* Loads every valid inode and write it into the allocation table */
 	pos = malloc(fs->inode_sec * sizeof(uint));
 
 	for (k = 0; k < fs->inode_block_size; ++k) {
-		get_ino_pos_new(fs, fs->inode_sec * k, pos, &ino_cnt);
+		get_ino_pos(fs, fs->inode_sec * k, pos, &ino_cnt);
 		inodes = (struct INODE *) INO_BUFFER;
 		load_inode_block(fs, inodes, pos, ino_cnt, k);
 		for (i = 0; i < ino_cnt; ++i) {

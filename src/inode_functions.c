@@ -10,7 +10,7 @@ bool find_ino_length(struct FILE_SYSTEM *fs, struct INODE *file, uint size)
 	pos = malloc(fs->inode_sec * sizeof(uint));
 
 	for (k = 0; k < fs->inode_block_size; ++k) {
-		get_ino_pos_new(fs, fs->inode_sec * k, pos, &ino_cnt);
+		get_ino_pos(fs, fs->inode_sec * k, pos, &ino_cnt);
 		inodes = (struct INODE *) INO_BUFFER;
 		load_inode_block(fs, inodes, pos, ino_cnt, k);
 		for (i = 0; i < ino_cnt; ++i) {
@@ -77,7 +77,7 @@ uint inodes_used(struct FILE_SYSTEM *fs)
 	return ret_val;
 }
 
-/* Returns the position of all inodes in a sector */
+/* Returns the position of all inodes in a sector
 void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 	uint offset, uint *pos, uint *ino_cnt)
 {
@@ -99,10 +99,12 @@ void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 			++start;
 		}
 	}
-}
+}*/
 
-/* Small helper function to access the allocation-table without changing the code  */
-inline uint8_t access_table(struct AT_WINDOW *at_win, uint32_t position){
+/* Small helper function to access the allocation
+ * table without changing the code  */
+inline uint8_t access_table(struct AT_WINDOW *at_win, uint32_t position)
+{
 	uint global_index, tmp, local_index;
 
 	tmp = at_win->sectors * at_win->sector_size;
@@ -115,7 +117,7 @@ inline uint8_t access_table(struct AT_WINDOW *at_win, uint32_t position){
 }
 
 /* Returns the position of all inodes in a block */
-void get_ino_pos_new(struct FILE_SYSTEM *fs,
+void get_ino_pos(struct FILE_SYSTEM *fs,
 	uint offset, uint *pos, uint *ino_cnt)
 {
 	uint i, tmp_byte, shift, start;
@@ -164,7 +166,7 @@ void load_all_inodes(struct FILE_SYSTEM *fs, struct INODE *buffer)
 	ino_pos = malloc(fs->inode_sec * sizeof(uint32_t));
 
 	for (i = 0; i < fs->inode_block_size; ++i) {
-		get_ino_pos_new(fs, offset, ino_pos, &ino_cnt);
+		get_ino_pos(fs, offset, ino_pos, &ino_cnt);
 		load_inode_block(fs, &buffer[ino_off], ino_pos, ino_cnt, i);
 		ino_off += ino_cnt;
 		offset += fs->inode_sec;

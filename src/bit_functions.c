@@ -22,30 +22,6 @@ void write_bit(uint8_t *table, uint index, bool bit_value)
 	}
 }
 
-/*TODO: Remove
- * Finds the next free bit in the allocation table
-int find_bit(const uint8_t *table, uint size)
-{
-	uint i, k;
-	uint8_t tmp_byte;
-
-	for (i = 0; i < size; ++i) {
-		if (table[i] != 0xFF)
-			break;
-	}*/
-
-	/*No free inodes
-	if (i >= size)
-		return -1;
-
-	for (k = 0; k < 8; ++k) {
-		tmp_byte = 0x80 >> k;
-		if ((table[i] & tmp_byte) == 0x00)
-			return (8 * i) + k;
-	}
-	return -2;*//* This should never happen
-}*/
-
 int find_seq_byte(uint8_t byte, uint length)
 {
 	uint i, tmp;
@@ -66,12 +42,13 @@ int find_seq_byte(uint8_t byte, uint length)
 }
 
 /* Finds the longest sequence of zeroes in the table and returns it the index in
- * max_start and the length in max_length. If there is a sequence of zeroes at the end
- * its start index is returned in end_start. Sequences that are smaller than a byte,
- * or that start/end in a byte are ignored. So the start/end of a sequence is always
- * at the border of two bytes */
-inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_start,
-		uint *max_length, uint *end_start, uint *end_length, bool *start_in_table) {
+ * max_start and the length in max_length. If there is a sequence of zeroes at
+ * the end its start index is returned in end_start. Sequences that are smaller
+ * than a byte, or that start/end in a byte are ignored. So the start/end of a
+ * sequence is always at the border of two bytes */
+inline void find_max_sequence(const uint8_t *table,
+	uint table_size, uint *max_start, uint *max_length,
+	uint *end_start, uint *end_length, bool *start_in_table) {
 
 	int i, tmp_length, tmp_start;
 
@@ -79,7 +56,7 @@ inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_s
 	tmp_start = *end_start;
 	*start_in_table = false;
 
-	for(i = 0; i < table_size; ++i) {
+	for (i = 0; i < table_size; ++i) {
 		if (table[i] != 0x00) {
 			tmp_start = (i + 1) * 8;
 			tmp_length = 0;
@@ -102,7 +79,8 @@ inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_s
 	*end_start = tmp_start;
 }
 
-bool find_max_sequence_global(struct AT_WINDOW *win, uint *start, uint *length) {
+bool find_max_sequence_global(struct AT_WINDOW *win,
+		uint *start, uint *length) {
 
 	uint i, tmp_start, tmp_length, tmp_end_start, tmp_end_length,
 	tmp_global_start, buffer_length;
@@ -121,7 +99,8 @@ bool find_max_sequence_global(struct AT_WINDOW *win, uint *start, uint *length) 
 			return false;
 
 		find_max_sequence(win->buffer, buffer_length, &tmp_start,
-				&tmp_length, &tmp_end_start, &tmp_end_length, &start_in_sec);
+			&tmp_length, &tmp_end_start, &tmp_end_length,
+			&start_in_sec);
 
 		if (start_in_sec)
 			tmp_global_start = i;
@@ -226,7 +205,8 @@ int find_seq_new(const uint8_t *table, uint table_size, uint length,
 	uint i, start;
 
 	if (length < 9)
-		return find_seq_small_new(table, table_size, length, end_length);
+		return find_seq_small_new(table, table_size,
+				length, end_length);
 
 	tmp = 0;
 	start = 0;
@@ -375,10 +355,12 @@ void delete_seq(uint8_t *table, uint index, uint length)
 	}
 }
 
-/* Delete function that can handle a allocation table that is to big for the allocation table buffer */
+/* Delete function that can handle a allocation
+ * table that is to big for the allocation table buffer */
 bool delete_seq_global(struct AT_WINDOW *win, uint index, uint length)
 {
-	uint global_index, global_end, index_start, length_start, buffer_size_bit;
+	uint global_index, global_end, index_start,
+		length_start, buffer_size_bit;
 
 	buffer_size_bit = win->sectors * win->sector_size * 8;
 	global_index = index / buffer_size_bit;
@@ -388,11 +370,9 @@ bool delete_seq_global(struct AT_WINDOW *win, uint index, uint length)
 	index_start = index % buffer_size_bit;
 	length_start = buffer_size_bit - index_start;
 
-	if (length < length_start) {
+	if (length < length_start)
 		length_start = length;
-	}
 
-	//TODO: Check if the window is already at the right position
 	if (!move_window(win, global_index))
 		return false;
 	delete_seq(win->buffer, index_start, length_start);
@@ -416,10 +396,10 @@ bool delete_seq_global(struct AT_WINDOW *win, uint index, uint length)
 	return true;
 }
 
-// TODO: make function for write and delete in one impl
 bool write_seq_global(struct AT_WINDOW *win, uint index, uint length)
 {
-	uint global_index, global_end, index_start, length_start, buffer_size_bit;
+	uint global_index, global_end, index_start,
+		length_start, buffer_size_bit;
 
 	buffer_size_bit = win->sectors * win->sector_size * 8;
 	global_index = index / buffer_size_bit;
@@ -429,9 +409,8 @@ bool write_seq_global(struct AT_WINDOW *win, uint index, uint length)
 	index_start = index % buffer_size_bit;
 	length_start = buffer_size_bit - index_start;
 
-	if (length < length_start) {
+	if (length < length_start)
 		length_start = length;
-	}
 
 	if (!move_window(win, global_index))
 		return false;
@@ -460,7 +439,8 @@ bool write_seq_global(struct AT_WINDOW *win, uint index, uint length)
 /* Checks if the addressed sequence of bit is zero  */
 bool check_seq_global(struct AT_WINDOW *win, uint index, uint length)
 {
-	uint global_index, global_end, start_index, start_length, buffer_size_bit;
+	uint global_index, global_end, start_index,
+		start_length, buffer_size_bit;
 
 	buffer_size_bit = win->sectors * win->sector_size * 8;
 	global_index = index / buffer_size_bit;
@@ -470,9 +450,8 @@ bool check_seq_global(struct AT_WINDOW *win, uint index, uint length)
 	start_index = index % buffer_size_bit;
 	start_length = buffer_size_bit - start_index;
 
-	if (length < start_length) {
+	if (length < start_length)
 		start_length = length;
-	}
 
 	if (!move_window(win, global_index))
 		return false;
@@ -500,39 +479,40 @@ bool check_seq_global(struct AT_WINDOW *win, uint index, uint length)
 	return true;
 }
 
-/* Finds the largest sequence in the allocation table that is free */
-bool find_largest_seq_global(struct AT_WINDOW *win, uint *length, uint *index)
-{
-
-	return false;
-}
-
-/* This functions finds a sequence that is lesser equal to the window buffer size */
+/* This functions finds a sequence that is
+ * lesser equal to the window buffer size */
 bool find_seq_global_small(struct AT_WINDOW *win, uint length, uint *index)
 {
 	uint global_index, buffer_size_byte, tmp_length;
 	int tmp_index;
 
 	buffer_size_byte = win->sectors * win->sector_size;
-	if(!move_window(win, 0)) return false;
+	if (!move_window(win, 0))
+		return false;
 
-	tmp_index = find_seq_new(win->buffer,buffer_size_byte , length, &tmp_length);
+	tmp_index = find_seq_new(win->buffer,
+			buffer_size_byte, length, &tmp_length);
 	if (tmp_index != -1) {
 		*index = tmp_index;
 		return true;
 	}
 
-	for(global_index = 1; global_index <= win->global_end; ++global_index) {
-		if(!move_window(win, global_index)) return false;
+	for (global_index = 1; global_index <= win->global_end;
+			++global_index) {
+		if (!move_window(win, global_index))
+			return false;
 
 		if (check_seq(win->buffer, 0, length - tmp_length)) {
-			*index = global_index * win->sector_size * 8  - tmp_length;
+			*index = global_index * win->sector_size
+					* 8 - tmp_length;
 			return true;
 		}
 
-		tmp_index = find_seq_new(win->buffer,buffer_size_byte , length, &tmp_length);
+		tmp_index = find_seq_new(win->buffer,
+				buffer_size_byte, length, &tmp_length);
 		if (tmp_index != -1) {
-			*index = tmp_index + global_index * win->sector_size * 8;
+			*index = tmp_index + global_index
+					* win->sector_size * 8;
 			return true;
 		}
 	}
@@ -540,7 +520,6 @@ bool find_seq_global_small(struct AT_WINDOW *win, uint length, uint *index)
 	return false;
 }
 
-/*TODO: find_seq_end und find_seq_start global implementieren */
 bool find_seq_global(struct AT_WINDOW *win, uint length, uint *index)
 {
 	uint i, global_index, tmp_length, buffer_size_byte, buffer_size_bit,
@@ -549,32 +528,38 @@ bool find_seq_global(struct AT_WINDOW *win, uint length, uint *index)
 	buffer_size_byte = win->sectors * win->sector_size;
 	buffer_size_bit = buffer_size_byte * 8;
 	tmp_length = length;
-	if(!move_window(win, 0)) return false;
+	if (!move_window(win, 0))
+		return false;
 	global_index = 0;
 
 	/* Find a sequence that is smaller than the buffer window */
-	if(length <= buffer_size_bit)
+	if (length <= buffer_size_bit)
 		return find_seq_global_small(win, length, index);
 
-	for (global_index = 0; global_index <= win->global_end; ++global_index) {
-		if (!move_window(win, global_index)) return false;
+	for (global_index = 0; global_index <= win->global_end;
+			++global_index) {
+		if (!move_window(win, global_index))
+			return false;
 
-		//Start
+		/* Start */
 		if (tmp_length == length) {
-			find_seq_new(win->buffer, buffer_size_byte, tmp_length, &tmp);
+			find_seq_new(win->buffer, buffer_size_byte,
+					tmp_length, &tmp);
 			tmp_index = buffer_size_bit - tmp;
 			tmp_length -= tmp;
 			tmp_global_index = i;
 			continue;
 		}
 
-		//Middle
+		/* Middle */
 		if (tmp_length > buffer_size_bit) {
 			for (i = 0; i < buffer_size_byte; ++i) {
-				if(win->buffer[i] != 0x00) {
+				if (win->buffer[i] != 0x00) {
 					tmp_length = length;
 					tmp_global_index = i;
-					find_seq_new(win->buffer, buffer_size_byte, tmp_length, &tmp);
+					find_seq_new(win->buffer,
+							buffer_size_byte,
+							tmp_length, &tmp);
 					tmp_index = buffer_size_bit - tmp;
 					break;
 				}
@@ -583,9 +568,10 @@ bool find_seq_global(struct AT_WINDOW *win, uint length, uint *index)
 			continue;
 		}
 
-		//End
-		if(check_seq(win->buffer, 0, tmp_length)) {
-			*index = tmp_global_index * win->sector_size + tmp_index;
+		/* End */
+		if (check_seq(win->buffer, 0, tmp_length)) {
+			*index = tmp_global_index *
+					win->sector_size + tmp_index;
 			return true;
 		}
 		tmp_length = length;
