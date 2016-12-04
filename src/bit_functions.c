@@ -46,7 +46,7 @@ int find_seq_byte(uint8_t byte, uint length)
  * the end its start index is returned in end_start. Sequences that are smaller
  * than a byte, or that start/end in a byte are ignored. So the start/end of a
  * sequence is always at the border of two bytes */
-inline void find_max_sequence(const uint8_t *table,
+void find_max_sequence(const uint8_t *table,
 	uint table_size, uint *max_start, uint *max_length,
 	uint *end_start, uint *end_length, bool *start_in_table) {
 

@@ -2,6 +2,7 @@
 
 #include "../../include/window_buffer.h"
 #include "file_system.h"
+#include "bit_functions.h"
 
 uint8_t *table1, *table1_empty, *table2_empty, *table2;
 uint8_t *data1, *data2, *data3;
@@ -13,8 +14,9 @@ int find_seq_byte(uint8_t byte, uint length);
 int find_seq(const uint8_t *table, uint table_size, uint length);
 void write_seq(uint8_t *table, uint index, uint length);
 void delete_seq(uint8_t *table, uint index, uint length);
-inline void find_max_sequence(const uint8_t *table, uint table_size, uint *max_start,
-		uint *max_length, uint *end_start, uint *end_length, bool *start_in_table);
+void find_max_sequence(const uint8_t *table,
+	uint table_size, uint *max_start, uint *max_length,
+	uint *end_start, uint *end_length, bool *start_in_table);
 bool check_seq(uint8_t *table, uint index, uint length);
 int find_seq_small(const uint8_t *table, uint table_size, uint length);
 int get_free_bit(uint8_t index, uint8_t byte);

@@ -103,7 +103,7 @@ void get_ino_pos(struct FILE_SYSTEM *fs, uint8_t *in_tab,
 
 /* Small helper function to access the allocation
  * table without changing the code  */
-inline uint8_t access_table(struct AT_WINDOW *at_win, uint32_t position)
+uint8_t access_table(struct AT_WINDOW *at_win, uint32_t position)
 {
 	uint global_index, tmp, local_index;
 
